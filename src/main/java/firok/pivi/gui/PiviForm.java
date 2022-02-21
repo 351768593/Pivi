@@ -2,6 +2,7 @@ package firok.pivi.gui;
 
 import firok.pivi.Pivi;
 import firok.pivi.scene.PanelScene;
+import firok.pivi.util.TimeUtil;
 
 import javax.swing.*;
 import java.awt.*;
@@ -43,7 +44,11 @@ public class PiviForm
 				@Override
 				public void windowClosing(WindowEvent e)
 				{
-					Pivi.config = formConfig.getConfig();
+					if(formConfig.hasChanged())
+					{
+						Pivi.config = formConfig.getConfig();
+						Pivi.config.setTimestamp(TimeUtil.getNow());
+					}
 				}
 			});
 			dia.setContentPane(formConfig.pConfigBase);

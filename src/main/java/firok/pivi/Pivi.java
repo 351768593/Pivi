@@ -3,12 +3,14 @@ package firok.pivi;
 import firok.pivi.config.ConfigBean;
 import firok.pivi.gui.PiviForm;
 import firok.pivi.scene.SceneManager;
+import firok.pivi.util.TimeUtil;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
+import java.util.Arrays;
 
 public class Pivi
 {
@@ -52,13 +54,19 @@ public class Pivi
 	{
 		piviInstance = new PiviForm();
 		frame = new JFrame(name + " " + version);
-		frame.setLocation(600, 400);
+		int initLocX = config.getInitLocX(), initLocY = config.getInitLocY();
+		int initWidth = config.getInitWidth(), initHeight = config.getInitHeight();
+		int initFrameState = config.getInitFrameState();
+
 		var minSize = new Dimension(366, 366);
 		frame.setMinimumSize(minSize);
-		frame.setSize(minSize);
+		frame.setLocation(initLocX, initLocY);
+		frame.setSize(initWidth, initHeight);
+		frame.setExtendedState(initFrameState);
+
 		frame.setContentPane(piviInstance.pForm);
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frame.pack();
+//		frame.pack();
 	}
 
 	public static SceneManager smgr;
@@ -76,7 +84,18 @@ public class Pivi
 			{
 				try
 				{
-					config.toFile(fileConfig);
+					var configOld = ConfigBean.fromFile(fileConfig);
+
+					var configBase = configOld.getTimestamp() > config.getTimestamp() ? configOld : config;
+
+					configBase.setInitFrameState(frame.getExtendedState());
+					var pt = frame.getLocationOnScreen();
+					configBase.setInitLocX(pt.x);
+					configBase.setInitLocY(pt.y);
+					configBase.setInitWidth(frame.getWidth());
+					configBase.setInitHeight(frame.getHeight());
+
+					configBase.toFile(fileConfig);
 				}
 				catch (Exception ignored) { }
 			}
@@ -85,6 +104,10 @@ public class Pivi
 
 	public static void main(String[] args) throws Exception
 	{
+		System.out.println("program args, "+args.length+":");
+		System.out.println(Arrays.toString(args));
+		System.out.println("====");
+
 		initConfig();
 		initLAF();
 		initScene();

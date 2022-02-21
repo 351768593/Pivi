@@ -4,8 +4,11 @@ import firok.pivi.config.ConfigBean;
 import firok.pivi.config.ConfigZoomMode;
 
 import javax.swing.*;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentAdapter;
 
 public class ConfigForm
 {
@@ -34,6 +37,16 @@ public class ConfigForm
 
 	private ButtonGroup groupImageSize;
 	private ButtonGroup groupStyle;
+
+	private boolean isChanged = false;
+	private void setChanged(Object placeholder)
+	{
+		this.isChanged = true;
+	}
+	public boolean hasChanged()
+	{
+		return this.isChanged;
+	}
 
 	public void setConfig(ConfigBean config)
 	{
@@ -79,6 +92,21 @@ public class ConfigForm
 	public ConfigForm()
 	{
 		btnResetUIConfig.addActionListener(e -> this.setConfig(new ConfigBean()));
+		// 监听值是否发生变化
+		cbURL.addActionListener(this::setChanged);
+		cbOperationBar.addActionListener(this::setChanged);
+		cbScrollBar.addActionListener(this::setChanged);
+		cbImageInfo.addActionListener(this::setChanged);
+		cbLoadingParticle.addActionListener(this::setChanged);
+		cbZoomAnimation.addActionListener(this::setChanged);
+		rbFitWidth.addActionListener(this::setChanged);
+		rbFitHeight.addActionListener(this::setChanged);
+		rbCustomPercent.addActionListener(this::setChanged);
+		rbOriginSize.addActionListener(this::setChanged);
+		rbLAFFlatDark.addActionListener(this::setChanged);
+		rbLAFFlatLight.addActionListener(this::setChanged);
+		inCustomPercent.addChangeListener(this::setChanged);
+		btnResetUIConfig.addActionListener(this::setChanged);
 	}
 
 
