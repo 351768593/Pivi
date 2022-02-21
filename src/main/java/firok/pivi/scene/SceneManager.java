@@ -1,12 +1,17 @@
 package firok.pivi.scene;
 
 import firok.pivi.Pivi;
+import firok.pivi.config.ConfigZoomMode;
 import firok.pivi.gui.PiviForm;
+import firok.pivi.gui.ViewportState;
+import firok.pivi.gui.ViewportSwitch;
 import firok.pivi.util.Colors;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.awt.image.ImageObserver;
 import java.net.URL;
 import java.util.*;
 import java.util.List;
@@ -19,11 +24,61 @@ public class SceneManager
 	private final Object LOCK = new Object();
 
 	/**
+	 * 静态viewport
+	 */
+	private ViewportState stateStatic;
+	/**
+	 * 正在进行动画的viewport
+	 */
+	private ViewportSwitch stateAnimation;
+	/**
+	 * viewport是否正在进行动画
+	 */
+	private boolean isStateAnimated;
+
+	/**
+	 * @param vs 新的viewport
+	 * @param immediately 无动画 直接切换
+	 */
+	public void switchViewport(ViewportState vs, boolean immediately)
+	{
+		synchronized (LOCK)
+		{
+			if(immediately)
+			{
+				stateStatic = vs;
+				isStateAnimated = false;
+			}
+			else
+			{
+				
+				isStateAnimated = true;
+			}
+		}
+	}
+
+
+	/**
 	 * 将当前场景切换至指定图片的渲染
 	 */
 	public void switchToImage(URL url)
 	{
-		;
+		Thread th = new Thread(()->{
+			try
+			{
+				var image = ImageIO.read(url);
+				var imageWidth = image.getWidth();
+				var imageHeight = image.getHeight();
+				System.out.println("图片加载完成");
+			}
+			catch (Exception e)
+			{
+				System.out.println("打开url失败");
+				e.printStackTrace();
+			}
+		});
+		th.setDaemon(true);
+		th.start();
 	}
 
 	/**
@@ -35,6 +90,8 @@ public class SceneManager
 	}
 
 	private Color bgc;
+
+	ImageObserver ob = (img, infoflags, x, y, width1, height1) -> false;
 
 	/**
 	 * @return 渲染场景
@@ -52,6 +109,31 @@ public class SceneManager
 			g.setColor(bgc);
 
 			g.fillRect(0, 0, width, height);
+
+			if(image != null)
+			{
+				ConfigZoomMode mode = Pivi.config.getInitZoomMode();
+				switch(mode)
+				{
+					case OriginSize:
+					{
+						g.drawImage(image, 0, 0, image.getWidth(), image.getHeight(), ob);
+						break;
+					}
+					case FitWindowWidth: case FitWindowHeight:
+					{
+						double ratio = 1d * imageHeight / imageWidth;
+						int renderWidth = mode == ConfigZoomMode.FitWindowWidth ? width : (int)(1d * height / imageHeight  * imageWidth);
+						int renderHeight = mode == ConfigZoomMode.FitWindowHeight ? height : (int)(1d * width / imageWidth * imageHeight);
+						g.drawImage(image, 0, 0, renderWidth, renderHeight, ob);
+						break;
+					}
+					case CustomPercent:
+						break;
+				}
+
+			}
+
 			for(var enScene : listEntity(true))
 			{
 				enScene.render(g, width, height, now);

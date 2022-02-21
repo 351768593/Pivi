@@ -41,4 +41,9 @@ public class PanelScene extends JPanel
 		}
 	}
 
+	@Override
+	public void repaint(long tm, int x, int y, int width, int height)
+	{
+		super.repaint(tm, x, y, width, height);
+	}
 }

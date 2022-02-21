@@ -10,6 +10,8 @@ import java.awt.datatransfer.DataFlavor;
 import java.awt.datatransfer.Transferable;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.net.URL;
 
 public class PiviForm
 {
@@ -22,7 +24,7 @@ public class PiviForm
 	public JButton btnFitSize;
 	public JButton btnCopyPath;
 	public JButton btnCopyImage;
-	public JTextField textField1;
+	public JTextField inURL;
 	public JButton btnReload;
 	public JButton btnSetting;
 	public JPanel pImageViewBase;
@@ -58,6 +60,28 @@ public class PiviForm
 			dia.setVisible(true);
 		});
 
+		btnReload.addActionListener(e ->
+		{
+			try
+			{
+				var raw = inURL.getText();
+				URL url;
+				if(raw.startsWith("http://") || raw.startsWith("https://"))
+				{
+					url = new URL(raw);
+				}
+				else
+				{
+					url = new File(raw).toURL();
+				}
+				Pivi.smgr.switchToImage(url);
+			}
+			catch (Exception exc)
+			{
+				System.out.println("加载url失败");
+				exc.printStackTrace();
+			}
+		});
 	}
 
 	private void createUIComponents()
