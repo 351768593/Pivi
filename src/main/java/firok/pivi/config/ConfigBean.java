@@ -11,16 +11,8 @@ import java.util.Scanner;
 @ToString
 public class ConfigBean
 {
-	Boolean isInitLayoutURL = false;
-	Boolean isInitLayoutOperationBar = false;
-	Boolean isInitLayoutImageInfo = false;
-	Boolean isInitLayoutScrollBar = false;
-
 	ConfigZoomMode initZoomMode = ConfigZoomMode.OriginSize;
 	Integer initZoomPercent = 100;
-
-	Boolean isAnimationLoadingParticle = true;
-	Boolean isAnimationZoom = true;
 
 	String lafClassName = com.formdev.flatlaf.FlatDarkLaf.class.getName();
 
@@ -28,18 +20,14 @@ public class ConfigBean
 	Integer initWidth = 366, initHeight = 366;
 	Integer initFrameState = Frame.MAXIMIZED_BOTH;
 
+	Integer beaconPort;
+
 	Long timestamp = Long.MIN_VALUE;
 
 	public void override(ConfigBean bean)
 	{
-		if(bean.isInitLayoutURL != null) this.isInitLayoutURL = bean.isInitLayoutURL;
-		if(bean.isInitLayoutOperationBar != null) this.isInitLayoutOperationBar = bean.isInitLayoutOperationBar;
-		if(bean.isInitLayoutImageInfo != null) this.isInitLayoutImageInfo = bean.isInitLayoutImageInfo;
-		if(bean.isInitLayoutScrollBar != null) this.isInitLayoutScrollBar = bean.isInitLayoutScrollBar;
 		if(bean.initZoomMode != null) this.initZoomMode = bean.initZoomMode;
 		if(bean.initZoomPercent != null) this.initZoomPercent = bean.initZoomPercent;
-		if(bean.isAnimationLoadingParticle != null) this.isAnimationLoadingParticle = bean.isAnimationLoadingParticle;
-		if(bean.isAnimationZoom != null) this.isAnimationZoom = bean.isAnimationZoom;
 		if(bean.lafClassName != null) this.lafClassName = bean.lafClassName;
 
 		if(bean.initLocX != null) this.initLocX = bean.initLocX;
@@ -47,6 +35,8 @@ public class ConfigBean
 		if(bean.initWidth != null) this.initWidth = bean.initWidth;
 		if(bean.initHeight != null) this.initHeight = bean.initHeight;
 		if(bean.initFrameState != null) this.initFrameState = bean.initFrameState;
+
+		if(bean.beaconPort != null) this.beaconPort = bean.beaconPort;
 
 		if(bean.timestamp != null) this.timestamp = bean.timestamp;
 	}
@@ -70,14 +60,8 @@ public class ConfigBean
 				final String key = tempWords[0].trim(), value = tempWords[1].trim();
 				switch (key)
 				{
-					case "isInitLayoutURL" -> ret.isInitLayoutURL = Boolean.parseBoolean(value);
-					case "isInitLayoutOperationBar" -> ret.isInitLayoutOperationBar = Boolean.parseBoolean(value);
-					case "isInitLayoutImageInfo" -> ret.isInitLayoutImageInfo = Boolean.parseBoolean(value);
-					case "isInitLayoutScrollBar" -> ret.isInitLayoutScrollBar = Boolean.parseBoolean(value);
 					case "initZoomMode" -> ret.initZoomMode = ConfigZoomMode.valueOf(value);
 					case "initZoomPercent" -> ret.initZoomPercent = Integer.valueOf(value);
-					case "isAnimationLoadingParticle" -> ret.isAnimationLoadingParticle = Boolean.parseBoolean(value);
-					case "isAnimationZoom" -> ret.isAnimationZoom = Boolean.parseBoolean(value);
 					case "lafClassName" -> ret.lafClassName = value;
 
 					case "initLocX" -> ret.initLocX = Integer.valueOf(value);
@@ -85,6 +69,8 @@ public class ConfigBean
 					case "initWidth" -> ret.initWidth = Integer.valueOf(value);
 					case "initHeight" -> ret.initHeight = Integer.valueOf(value);
 					case "initFrameState" -> ret.initFrameState = Integer.valueOf(value);
+
+					case "beaconPort" -> ret.beaconPort = Integer.valueOf(value);
 
 					case "timestamp" -> ret.timestamp = Long.valueOf(value);
 				}
@@ -101,14 +87,8 @@ public class ConfigBean
 			var out = new PrintWriter(ofs)
 		)
 		{
-			out.println("isInitLayoutURL="+isInitLayoutURL);
-			out.println("isInitLayoutOperationBar="+isInitLayoutOperationBar);
-			out.println("isInitLayoutImageInfo="+isInitLayoutImageInfo);
-			out.println("isInitLayoutScrollBar="+isInitLayoutScrollBar);
 			out.println("initZoomMode="+initZoomMode);
 			out.println("initZoomPercent="+initZoomPercent);
-			out.println("isAnimationLoadingParticle="+isAnimationLoadingParticle);
-			out.println("isAnimationZoom="+isAnimationZoom);
 			out.println("lafClassName="+lafClassName);
 			out.println("initLocX="+initLocX);
 			out.println("initLocY="+initLocY);
@@ -116,6 +96,7 @@ public class ConfigBean
 			out.println("initHeight="+initHeight);
 			out.println("initFrameState="+ initFrameState);
 			out.println("timestamp="+timestamp);
+			out.println("beaconPort"+beaconPort);
 
 			out.flush();
 			ofs.flush();

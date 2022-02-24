@@ -1,26 +1,48 @@
 package firok.pivi;
 
+import firok.pivi.beacon.BeaconLit;
 import firok.pivi.config.ConfigBean;
-import firok.pivi.gui.PiviForm;
-import firok.pivi.scene.SceneManager;
-import firok.pivi.util.TimeUtil;
+import firok.pivi.gui.PiviBeaconForm;
+import firok.pivi.gui.PiviImageForm;
+import firok.pivi.util.*;
 
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
-import java.util.Arrays;
+import java.net.URL;
+import java.util.List;
+import java.util.Vector;
 
 public class Pivi
 {
 	public static final String name = "Pivi";
-	public static final String version = "0.1.0";
+	public static final String version = "0.1.1";
 	public static final String author = "Firok";
 
 	public static final File fileConfig = new File("./pivi.conf");
+
+	private static void initLAF(String lafClassName)
+	{
+		try
+		{
+			UIManager.setLookAndFeel(lafClassName);
+			UIManager.put("defaultFont", new Font("Microsoft Yahei", Font.PLAIN, 12));
+		}
+		catch (Exception ignored)
+		{
+			try
+			{
+				UIManager.setLookAndFeel(new com.formdev.flatlaf.FlatDarkLaf());
+				UIManager.put("defaultFont", new Font("Microsoft Yahei", Font.PLAIN, 12));
+			}
+			catch (Exception ignored2) { }
+		}
+	}
+
 	public static ConfigBean config;
-	private static void initConfig()
+	public static void initConfig()
 	{
 		config = new ConfigBean();
 		try
@@ -30,90 +52,110 @@ public class Pivi
 		}
 		catch (Exception ignored) { }
 	}
-
-	private static void initLAF()
+	public static void saveConfig()
 	{
 		try
 		{
-			UIManager.setLookAndFeel(config.getLafClassName());
-			UIManager.put("defaultFont", new Font("Microsoft Yahei", Font.PLAIN, 12));
+			config.toFile(fileConfig);
 		}
-		catch (Exception ignored) {
-			try
-			{
-				var laf = new com.formdev.flatlaf.FlatDarkLaf();
-				UIManager.setLookAndFeel(laf);
-			}
-			catch (Exception ignored2) { }
-		}
+		catch (Exception ignored) { }
 	}
 
-	public static JFrame frame;
-	public static PiviForm piviInstance;
-	private static void initFrame()
+	public static JFrame frameBeacon;
+	public static List<JFrame> listFrameImage = new Vector<>();
+
+	public static void initFrameBeacon()
 	{
-		piviInstance = new PiviForm();
-		frame = new JFrame(name + " " + version);
-		int initLocX = config.getInitLocX(), initLocY = config.getInitLocY();
-		int initWidth = config.getInitWidth(), initHeight = config.getInitHeight();
-		int initFrameState = config.getInitFrameState();
+		JFrame frame = new JFrame();
+		var piviBeacon = new PiviBeaconForm();
 
-		var minSize = new Dimension(366, 366);
-		frame.setMinimumSize(minSize);
-		frame.setLocation(initLocX, initLocY);
-		frame.setSize(initWidth, initHeight);
-		frame.setExtendedState(initFrameState);
+		// 标准操作
+		frame.setContentPane(piviBeacon.pBase);
+		frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
+		// 初始大小
+		frame.setMinimumSize(new Dimension(600, 400));
+		frame.setSize(600, 400);
+		frame.setLocationRelativeTo(null); // 居中显示
 
-		frame.setContentPane(piviInstance.pForm);
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-//		frame.pack();
-	}
-
-	public static SceneManager smgr;
-	private static void initScene()
-	{
-		smgr = new SceneManager();
-	}
-
-	private static void postInitFrame()
-	{
 		frame.addWindowListener(new WindowAdapter()
 		{
 			@Override
+			public void windowOpened(WindowEvent e)
+			{
+				frameBeacon = frame;
+			}
+
+			@Override
 			public void windowClosing(WindowEvent e)
 			{
-				try
-				{
-					var configOld = ConfigBean.fromFile(fileConfig);
+				saveConfig();
+				frameBeacon = null;
+			}
+		});
 
-					var configBase = configOld.getTimestamp() > config.getTimestamp() ? configOld : config;
+		frame.setVisible(true);
+	}
+	public static void initFrameImage(String raw)
+	{
+		JFrame frame = new JFrame();
+		var piviImage = new PiviImageForm();
 
-					configBase.setInitFrameState(frame.getExtendedState());
-					var pt = frame.getLocationOnScreen();
-					configBase.setInitLocX(pt.x);
-					configBase.setInitLocY(pt.y);
-					configBase.setInitWidth(frame.getWidth());
-					configBase.setInitHeight(frame.getHeight());
+		// 标准操作
+		frame.setContentPane(piviImage.pViewport);
+		frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+		// 根据配置文件修改大小
+		frame.setLocation(config.getInitLocX(), config.getInitLocY());
+		frame.setSize(config.getInitWidth(), config.getInitHeight());
+		frame.setExtendedState(config.getInitFrameState());
 
-					configBase.toFile(fileConfig);
-				}
-				catch (Exception ignored) { }
+		frame.addWindowListener(new WindowAdapter()
+		{
+			@Override
+			public void windowOpened(WindowEvent e)
+			{
+				listFrameImage.add(frame);
+			}
+
+			@Override
+			public void windowClosing(WindowEvent e)
+			{
+				listFrameImage.remove(frame);
 			}
 		});
 	}
 
-	public static void main(String[] args) throws Exception
+	public static void main(String[] args)
 	{
-		System.out.println("program args, "+args.length+":");
-		System.out.println(Arrays.toString(args));
-		System.out.println("====");
+		var ac = new ArgumentCompact(args);
+		if(ac.modeHelp) TaskHelp.run();
+		else if(ac.modeVersion) TaskVersion.run();
+		else if(ac.modeGenWin) TaskGenWin.run();
+		else // 启动本体
+		{
+			initConfig();
+			if(ac.port != null)
+			{
+				config.setBeaconPort(ac.port);
+			}
 
-		initConfig();
-		initLAF();
-		initScene();
-		initFrame();
-		frame.setVisible(true);
-		postInitFrame();
-		smgr.startThread();
+			Boolean runResult = null;
+			if(BeaconLit.litServer(config.getBeaconPort())) // 尝试启动服务端 如果能启动就直接继续
+			{
+				runResult = true;
+			}
+			else // 服务端无法启动 尝试启动客户端并发送请求
+			{
+				for(var raw : ac.listPotentialUrl)
+				{
+					if(BeaconLit.litClient(config.getBeaconPort(), raw))
+						runResult = false;
+				}
+			}
+
+			if(runResult == null)
+			{
+				JOptionPane.showMessageDialog(null, "Pivi 启动失败, 请检查信标端口号是否被其它程序占用");
+			}
+		}
 	}
 }
