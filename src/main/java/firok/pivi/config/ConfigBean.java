@@ -20,7 +20,9 @@ public class ConfigBean
 	Integer initWidth = 366, initHeight = 366;
 	Integer initFrameState = Frame.MAXIMIZED_BOTH;
 
-	Integer beaconPort;
+	Integer zoomSpeed = 40;
+
+	Integer beaconPort = 21005;
 
 	Long timestamp = Long.MIN_VALUE;
 

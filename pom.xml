@@ -28,6 +28,32 @@
             <artifactId>flatlaf</artifactId>
             <version>2.0.1</version>
         </dependency>
+        <dependency>
+            <groupId>org.pushing-pixels</groupId>
+            <artifactId>radiance-common</artifactId>
+            <version>5.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.pushing-pixels</groupId>
+            <artifactId>radiance-animation</artifactId>
+            <version>5.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.pushing-pixels</groupId>
+            <artifactId>radiance-theming</artifactId>
+            <version>5.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.pushing-pixels</groupId>
+            <artifactId>radiance-component</artifactId>
+            <version>5.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.pushing-pixels</groupId>
+            <artifactId>radiance-theming-extras</artifactId>
+            <version>5.0.0</version>
+        </dependency>
+
 
         <!-- https://mvnrepository.com/artifact/org.apache.xmlgraphics/batik-swing -->
         <dependency>

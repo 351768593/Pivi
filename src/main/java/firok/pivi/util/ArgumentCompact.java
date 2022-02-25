@@ -23,13 +23,11 @@ public class ArgumentCompact
 	 */
 	public Integer port;
 
-	public List<String> listPotentialUrl;
+	public List<String> listPotentialUrl = new ArrayList<>(3);
 
 	public ArgumentCompact(String[] args)
 	{
 		if(args == null || args.length == 0) return;
-
-		this.listPotentialUrl = new ArrayList<>(3);
 
 		for(int step = 0; step < args.length; step++)
 		{
@@ -54,22 +52,5 @@ public class ArgumentCompact
 	private static boolean hasNext(String[] args, int from, int length)
 	{
 		return from + length < args.length;
-	}
-
-	private static URL readUrl(String raw)
-	{
-		try
-		{
-			var file = new File(raw);
-			if(file.exists() && file.isFile())
-				return file.toURL();
-		}
-		catch (Exception exceptionFromFile)
-		{
-			try { return new URL(raw); }
-			catch (Exception ignored) { }
-		}
-
-		return null;
 	}
 }

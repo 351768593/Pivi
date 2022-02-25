@@ -1,6 +1,8 @@
 package firok.pivi.beacon;
 
+import firok.pivi.Pivi;
 import firok.pivi.util.BitUtil;
+import firok.pivi.util.URLUtil;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -56,10 +58,9 @@ public class BeaconDispatchThread extends Thread
 			byte[] bufferUrl = new byte[length];
 			is.read(bufferUrl);
 			String strUrl = new String(bufferUrl, StandardCharsets.UTF_8);
-			URL url = new URL(strUrl);
+			Pivi.initFrameImage(strUrl);
 
 			System.out.println("信标接收数据完成");
-			System.out.println(url);
 			success = true;
 		}
 		catch (Exception e)
