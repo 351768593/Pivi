@@ -154,7 +154,7 @@ public class Pivi
 			frame.setLocation(config.getInitLocX(), config.getInitLocY());
 			frame.setSize(config.getInitWidth(), config.getInitHeight());
 			frame.setExtendedState(config.getInitFrameState());
-			frame.setTitle(raw.length() < 20 ? raw : raw.substring(0, 20) + "...");
+			frame.setTitle(raw.length() < 40 ? raw : raw.substring(0, 40) + "...");
 
 			frame.addWindowListener(new WindowAdapter()
 			{
