@@ -9,6 +9,8 @@ import lombok.SneakyThrows;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.File;
@@ -71,6 +73,30 @@ public class Pivi
 
 	public static JFrame frameBeacon;
 	public static List<JFrame> listFrameImage = new Vector<>();
+
+	public static TransferHandler dh = new TransferHandler("jpg"){
+		@Override
+		public boolean canImport(TransferSupport support)
+		{
+			System.out.println("can import [support]");
+			return true;
+		}
+
+		@Override
+		public boolean importData(TransferSupport support)
+		{
+			System.out.println("import data [support]");
+			return true;
+		}
+
+		@Override
+		public int getSourceActions(JComponent c)
+		{
+			return NONE;
+		}
+
+
+	};
 
 	@SneakyThrows
 	public static void initFrameBeacon()

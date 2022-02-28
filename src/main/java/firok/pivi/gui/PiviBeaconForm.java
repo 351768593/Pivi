@@ -11,10 +11,13 @@ import javax.swing.event.ChangeListener;
 import javax.swing.event.ListDataListener;
 import javax.swing.plaf.metal.MetalLookAndFeel;
 import javax.swing.plaf.nimbus.NimbusLookAndFeel;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.dnd.DnDConstants;
+import java.awt.dnd.DropTarget;
+import java.awt.dnd.DropTargetEvent;
+import java.awt.dnd.DropTargetListener;
+import java.awt.event.*;
 import java.util.Arrays;
 import java.util.Collections;
 
@@ -32,6 +35,8 @@ public class PiviBeaconForm
 	public JSpinner inZoomSpped;
 	public JSpinner inBeaconPort;
 	private JComboBox<EnumComboLAF> cbxLAF;
+	private JPanel pImageDropBox;
+	private JLabel pLabelImageDropBox;
 
 	private enum EnumComboLAF
 	{
