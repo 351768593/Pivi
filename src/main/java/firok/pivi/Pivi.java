@@ -146,6 +146,7 @@ public class Pivi
 		EventQueue.invokeLater(()->{
 			JFrame frame = new JFrame();
 			var piviImage = new PiviImageForm();
+			piviImage.initFromConfig(config);
 
 			// 标准操作
 			frame.setContentPane(piviImage.pViewport);
