@@ -37,6 +37,7 @@ public class PiviBeaconForm
 	private JComboBox<EnumComboLAF> cbxLAF;
 	private JPanel pImageDropBox;
 	private JLabel pLabelImageDropBox;
+	private JRadioButton rbFitAuto;
 
 	private enum EnumComboLAF
 	{
@@ -109,9 +110,10 @@ public class PiviBeaconForm
 					Pivi.initFrameImage(raw);
 				}
 			}
-			inUrl.setText("");
+//			inUrl.setText("");
 		});
 
+		rbFitAuto.addActionListener(e -> Pivi.config.setInitZoomMode(ConfigZoomMode.FitAuto));
 		rbFitWidth.addActionListener(e -> Pivi.config.setInitZoomMode(ConfigZoomMode.FitWindowWidth));
 		rbFitHeight.addActionListener(e -> Pivi.config.setInitZoomMode(ConfigZoomMode.FitWindowHeight));
 		rbOriginSize.addActionListener(e -> Pivi.config.setInitZoomMode(ConfigZoomMode.OriginSize));
@@ -144,6 +146,7 @@ public class PiviBeaconForm
 	public void loadConfig(ConfigBean config)
 	{
 		final var zm = config.getInitZoomMode();
+		rbFitAuto.setSelected(zm == ConfigZoomMode.FitAuto);
 		rbFitWidth.setSelected(zm == ConfigZoomMode.FitWindowWidth);
 		rbFitHeight.setSelected(zm == ConfigZoomMode.FitWindowHeight);
 		rbOriginSize.setSelected(zm == ConfigZoomMode.OriginSize);

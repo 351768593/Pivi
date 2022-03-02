@@ -74,30 +74,6 @@ public class Pivi
 	public static JFrame frameBeacon;
 	public static List<JFrame> listFrameImage = new Vector<>();
 
-	public static TransferHandler dh = new TransferHandler("jpg"){
-		@Override
-		public boolean canImport(TransferSupport support)
-		{
-			System.out.println("can import [support]");
-			return true;
-		}
-
-		@Override
-		public boolean importData(TransferSupport support)
-		{
-			System.out.println("import data [support]");
-			return true;
-		}
-
-		@Override
-		public int getSourceActions(JComponent c)
-		{
-			return NONE;
-		}
-
-
-	};
-
 	@SneakyThrows
 	public static void initFrameBeacon()
 	{
@@ -147,6 +123,7 @@ public class Pivi
 			JFrame frame = new JFrame();
 			var piviImage = new PiviImageForm();
 			piviImage.initFromConfig(config);
+			piviImage.frame = frame;
 
 			// 标准操作
 			frame.setContentPane(piviImage.pViewport);
@@ -214,7 +191,11 @@ public class Pivi
 
 			if(runResult == null)
 			{
-				JOptionPane.showMessageDialog(null, "Pivi 启动失败, 请检查信标端口号是否被其它程序占用");
+				JOptionPane.showMessageDialog(
+						null,
+						"Pivi 启动失败, 请检查信标端口 %d 是否被其它程序占用"
+								.formatted(ac.port)
+				);
 			}
 		}
 	}

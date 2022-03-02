@@ -3,21 +3,19 @@ package firok.pivi.gui;
 import firok.pivi.config.ConfigBean;
 import firok.pivi.config.ConfigZoomMode;
 import firok.pivi.util.Colors;
-import firok.pivi.util.URLUtil;
+import firok.pivi.util.ResourceUtil;
 
-import javax.imageio.ImageIO;
 import javax.swing.*;
+import javax.swing.event.MenuKeyEvent;
+import javax.swing.event.MenuKeyListener;
 import java.awt.*;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
-import java.awt.event.MouseWheelEvent;
-import java.awt.image.BufferedImage;
+import java.awt.datatransfer.Clipboard;
+import java.awt.datatransfer.ClipboardOwner;
+import java.awt.datatransfer.StringSelection;
+import java.awt.event.*;
 import java.awt.image.ImageObserver;
 import java.net.URL;
 import java.util.Objects;
-
-import static java.awt.image.BufferedImage.*;
 
 public class PiviImageForm
 {
@@ -32,17 +30,30 @@ public class PiviImageForm
 	public URL url;
 	public String urlString;
 	public String urlShort;
-	public String imageType;
+//	public String imageType;
 	public EnumLoadingStatus status;
 	public Exception exception;
-	public BufferedImage image;
+	public Image image;
 	public int imageWidth, imageHeight;
+	public ImageObserver iob;
 
 	public int viewportLocX, viewportLocY;
 	public int viewportPercent;
 	public int viewportDragPreX, viewportDragPreY;
 	public boolean isViewportDragging;
+	public boolean isAnimatedImage;
 	public boolean needRepainting;
+	public boolean needRepaint()
+	{
+		return ( // 判断动画属性和图片属性
+			this.isAnimatedImage ||
+			this.needRepainting
+		) && ( // 判断窗体状态
+			this.frame != null &&
+			this.frame.isFocused() &&
+			this.frame.isVisible()
+		);
+	}
 
 	ConfigZoomMode zoomMode;
 	int zoomPercent;
@@ -61,8 +72,6 @@ public class PiviImageForm
 	{
 		return (int)(.01f * viewportPercent * imageHeight);
 	}
-
-	private static final ImageObserver ob = (img, infoflags, x, y, width, height) -> false;
 
 	private static Font font;
 	private static Color colorCommon = new Color(Colors.CadetBlue);
@@ -93,12 +102,12 @@ public class PiviImageForm
 							case Finished -> {
 								g.setColor(colorBackground);
 								g.fillRect(0, 0, graphicWidth, graphicHeight);
-								g.drawImage(image, viewportLocX, viewportLocY, imageWidth, imageHeight, ob);
+								g.drawImage(image, viewportLocX, viewportLocY, imageWidth, imageHeight, iob);
 
 								g.setColor(colorCommon);
 								g.drawString(urlString, 0, size);
 								g.drawString(imageWidth + " × " + imageHeight, 0, size * 2 + 4);
-								g.drawString(imageType, 0, size * 3 + 8);
+//								g.drawString(imageType, 0, size * 3 + 8);
 							}
 							case Error -> {
 								var message = exception.getMessage();
@@ -118,17 +127,64 @@ public class PiviImageForm
 			}
 		};
 
-		menu = new JPopupMenu("测试menu");
-		menu.add("显示详细信息");
-		menu.add("(无二维码)");
-		menu.add("保存至 qsave");
-		menu.add("保存至 我的文档");
+		menu = new FramePopupMenu();
 
 		pViewport.setComponentPopupMenu(menu);
 		vml = this.new ViewportMouseListener();
 		pViewport.addMouseListener(vml);
 		pViewport.addMouseWheelListener(vml);
 		pViewport.addMouseMotionListener(vml);
+	}
+	private class FramePopupMenu extends JPopupMenu
+	{
+		final JMenuItem miCopyFullURL;
+		final JMenuItem miCopyFullShort;
+
+		final JMenuItem miImageFitAuto;
+		final JMenuItem miImageFitHeight;
+		final JMenuItem miImageFitWidth;
+		final JMenuItem miImageOriginSize;
+		FramePopupMenu()
+		{
+			super();
+			miCopyFullURL = new JMenuItem("复制完整URL");
+			miCopyFullURL.addActionListener(e -> putTextIntoClipboard(PiviImageForm.this.urlString));
+			add(miCopyFullURL);
+
+			miCopyFullShort = new JMenuItem("复制文件名");
+			miCopyFullShort.addActionListener(e -> putTextIntoClipboard(PiviImageForm.this.urlShort));
+			add(miCopyFullShort);
+
+
+			miImageFitAuto = new JMenuItem("自动适应窗口大小");
+			miImageFitAuto.addActionListener(e -> adjustImageZoom(ConfigZoomMode.FitAuto));
+			add(miImageFitAuto);
+
+			miImageFitWidth = new JMenuItem("适应窗口宽度");
+			miImageFitWidth.addActionListener(e -> adjustImageZoom(ConfigZoomMode.FitWindowWidth));
+			add(miImageFitWidth);
+
+			miImageFitHeight = new JMenuItem("适应窗口高度");
+			miImageFitHeight.addActionListener(e -> adjustImageZoom(ConfigZoomMode.FitWindowHeight));
+			add(miImageFitHeight);
+
+			miImageOriginSize = new JMenuItem("原始大小");
+			miImageOriginSize.addActionListener(e -> adjustImageZoom(ConfigZoomMode.OriginSize));
+			add(miImageOriginSize);
+
+
+		}
+
+		static void putTextIntoClipboard(String value)
+		{
+			var cp = Toolkit.getDefaultToolkit().getSystemClipboard();
+			var trans = new StringSelection(value);
+			cp.setContents(trans, null);
+		}
+		static void adjustImageZoom(ConfigZoomMode mode)
+		{
+			;
+		}
 	}
 
 	private class ViewportMouseListener extends MouseAdapter
@@ -165,6 +221,7 @@ public class PiviImageForm
 			synchronized (LOCK)
 			{
 				final int movement = e.getWheelRotation();
+				needRepainting = true;
 				if(movement < 0) // up
 				{
 					;
@@ -189,6 +246,7 @@ public class PiviImageForm
 				viewportLocY += iY;
 				viewportDragPreX = currentX;
 				viewportDragPreY = currentY;
+				needRepainting = true;
 			}
 		}
 
@@ -237,7 +295,7 @@ public class PiviImageForm
 			PiviImageForm.this.status = EnumLoadingStatus.NotStarted;
 			try
 			{
-				var _u = URLUtil.readUrl(raw);
+				var _u = ResourceUtil.readUrl(raw);
 				if(_u == null)
 				{
 					synchronized (LOCK)
@@ -257,11 +315,14 @@ public class PiviImageForm
 						PiviImageForm.this.urlString = _us;
 						var _ius = -1;
 						_ius = (_ius = _us.lastIndexOf('/')) > 0 ? _ius : _us.lastIndexOf('\\');
-						PiviImageForm.this.urlShort = _ius > 0 ? _us.substring(_ius) : _us;
+						PiviImageForm.this.urlShort = _ius > 0 ? _us.substring(_ius + 1) : _us;
 						PiviImageForm.this.status = EnumLoadingStatus.Started;
 					}
 
-					var _i = ImageIO.read(_u);
+					var bytes = ResourceUtil.readBytes(_u);
+					var _isAnimatedImage = ResourceUtil.isAnimatedImage(bytes);
+					var _ii = new ImageIcon(bytes);
+					var _i = _ii.getImage();
 					if(_i == null)
 					{
 						throw new RuntimeException("无法读取为图片: "+_u);
@@ -271,26 +332,10 @@ public class PiviImageForm
 					{
 						PiviImageForm.this.status = EnumLoadingStatus.Finished;
 						PiviImageForm.this.image = _i;
-						PiviImageForm.this.imageWidth = _i.getWidth();
-						PiviImageForm.this.imageHeight = _i.getHeight();
-						PiviImageForm.this.imageType = switch (image.getType())
-								{
-									case TYPE_CUSTOM -> "CUSTOM";
-									case TYPE_INT_ARGB -> "INT ARGB";
-									case TYPE_INT_ARGB_PRE -> "INT ARGB PRE";
-									case TYPE_INT_BGR -> "INT BGR";
-									case TYPE_INT_RGB -> "INT RGB";
-									case TYPE_3BYTE_BGR -> "3 BYTE BGR";
-									case TYPE_4BYTE_ABGR -> "4 BYTE ABGR";
-									case TYPE_4BYTE_ABGR_PRE -> "4 BYTE ABGR PRE";
-									case TYPE_BYTE_BINARY -> "BYTE BINARY";
-									case TYPE_BYTE_GRAY -> "BYTE GRAY";
-									case TYPE_BYTE_INDEXED -> "BYTE INDEXED";
-									case TYPE_USHORT_555_RGB -> "USHORT 555 RGB";
-									case TYPE_USHORT_565_RGB -> "USHORT 565 RGB";
-									case TYPE_USHORT_GRAY -> "USHORT GRAY";
-									default -> "unknow";
-								};
+						PiviImageForm.this.isAnimatedImage = _isAnimatedImage;
+						PiviImageForm.this.iob = _ii.getImageObserver();
+						PiviImageForm.this.imageWidth = _i.getWidth(PiviImageForm.this.iob);
+						PiviImageForm.this.imageHeight = _i.getHeight(PiviImageForm.this.iob);
 					}
 
 					PiviImageForm.this.pViewport.repaint();
@@ -306,6 +351,7 @@ public class PiviImageForm
 			}
 		}
 	}
+	// fixme low 改成多个frame共用一个线程的写法 (协程)
 	private class ThreadAnimation extends Thread
 	{
 		ThreadAnimation()
@@ -323,13 +369,13 @@ public class PiviImageForm
 				{
 					synchronized (PiviImageForm.this.LOCK)
 					{
-						if(PiviImageForm.this.needRepainting)
+						if(PiviImageForm.this.needRepaint())
 						{
 							PiviImageForm.this.pViewport.repaint();
 							PiviImageForm.this.needRepainting = false;
 						}
 					}
-					Thread.sleep(20);
+					Thread.sleep(25);
 				}
 				catch (Exception e)
 				{

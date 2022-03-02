@@ -2,14 +2,11 @@ package firok.pivi.beacon;
 
 import firok.pivi.Pivi;
 import firok.pivi.util.BitUtil;
-import firok.pivi.util.URLUtil;
 
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Scanner;
 
 public class BeaconDispatchThread extends Thread
 {
