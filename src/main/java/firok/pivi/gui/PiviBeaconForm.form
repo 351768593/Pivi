@@ -45,7 +45,7 @@
                           </grid>
                         </constraints>
                         <properties>
-                          <text value="&quot;G:\Projects\Pivi\1.gif&quot;"/>
+                          <text value="file:/G:/Projects/Pivi/圣诞 夜景.jpg"/>
                         </properties>
                       </component>
                       <component id="bf5cd" class="javax.swing.JButton" binding="btnLoad" default-binding="true">

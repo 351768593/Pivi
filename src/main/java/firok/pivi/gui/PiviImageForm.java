@@ -14,6 +14,8 @@ import java.awt.datatransfer.ClipboardOwner;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
 import java.awt.image.ImageObserver;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URL;
 import java.util.Objects;
 
@@ -37,10 +39,10 @@ public class PiviImageForm
 	public int imageWidth, imageHeight;
 	public ImageObserver iob;
 
-	public int viewportLocX, viewportLocY;
-	public int viewportPercent;
-	public int viewportDragPreX, viewportDragPreY;
 	public boolean isViewportDragging;
+	public int viewportDragPreX, viewportDragPreY;
+	public int viewportLocX, viewportLocY;
+	public BigDecimal viewportPercent;
 	public boolean isAnimatedImage;
 	public boolean needRepainting;
 	public boolean needRepaint()
@@ -56,21 +58,25 @@ public class PiviImageForm
 	}
 
 	ConfigZoomMode zoomMode;
-	int zoomPercent;
+	BigDecimal zoomPercent;
 	public void initFromConfig(ConfigBean config)
 	{
 		zoomMode = config.getInitZoomMode();
-		zoomPercent = config.getInitZoomPercent();
+
+		zoomPercent = new BigDecimal(config.getInitZoomPercent())
+				.divide(new BigDecimal(100), RoundingMode.CEILING);
+		viewportPercent = new BigDecimal(1);
 	}
 
 	public long whenStartImageInformation = -1;
 	public int getViewportWidth()
 	{
-		return (int)(.01f * viewportPercent * imageWidth);
+		// todo 可能需要改成 BigDecimal 计算方式
+		return (int)(.01f * viewportPercent.floatValue() * imageWidth);
 	}
 	public int getViewportHeight()
 	{
-		return (int)(.01f * viewportPercent * imageHeight);
+		return (int)(.01f * viewportPercent.floatValue() * imageHeight);
 	}
 
 	private static Font font;
@@ -102,7 +108,13 @@ public class PiviImageForm
 							case Finished -> {
 								g.setColor(colorBackground);
 								g.fillRect(0, 0, graphicWidth, graphicHeight);
-								g.drawImage(image, viewportLocX, viewportLocY, imageWidth, imageHeight, iob);
+								int viewportWidth = getViewportWidth(), viewportHeight = getViewportHeight();
+								g.drawImage(
+										image,
+										viewportLocX, viewportLocY,
+										viewportWidth, viewportHeight,
+										iob
+								);
 
 								g.setColor(colorCommon);
 								g.drawString(urlString, 0, size);
@@ -224,11 +236,17 @@ public class PiviImageForm
 				needRepainting = true;
 				if(movement < 0) // up
 				{
-					;
+					PiviImageForm.this.viewportPercent =
+							PiviImageForm.this.viewportPercent.add(PiviImageForm.this.zoomPercent);
 				}
 				else if(movement > 0) // down
 				{
-					;
+					PiviImageForm.this.viewportPercent =
+							PiviImageForm.this.viewportPercent.subtract(PiviImageForm.this.zoomPercent);
+					if(PiviImageForm.this.viewportPercent.doubleValue() < 0.01)
+					{
+						PiviImageForm.this.viewportPercent = new BigDecimal("0.01");
+					}
 				}
 			}
 		}
