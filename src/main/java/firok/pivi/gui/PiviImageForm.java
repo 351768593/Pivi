@@ -57,6 +57,34 @@ public class PiviImageForm
 		);
 	}
 
+	public static final BigDecimal B100 = new BigDecimal(100);
+
+	private void adjustImageZoom(ConfigZoomMode mode, BigDecimal extraViewportPercent)
+	{
+		final int renderWidth = pViewport.getWidth(), renderHeight = pViewport.getHeight();
+
+		zoomMode = mode;
+		needRepainting = true;
+
+		viewportLocX = 0;
+		viewportLocY = 0;
+
+		viewportPercent = switch (mode)
+		{
+			case OriginSize -> B100;
+			case FitWindowWidth -> B100.multiply(new BigDecimal(renderWidth))
+					.divide(new BigDecimal(imageWidth), RoundingMode.CEILING);
+			case FitWindowHeight -> B100.multiply(new BigDecimal(renderHeight))
+					.divide(new BigDecimal(imageHeight), RoundingMode.CEILING);
+			case FitAuto -> imageHeight > imageWidth ?
+					B100.multiply(new BigDecimal(renderHeight))
+							.divide(new BigDecimal(imageHeight), RoundingMode.CEILING) :
+					B100.multiply(new BigDecimal(renderWidth))
+							.divide(new BigDecimal(imageWidth), RoundingMode.CEILING);
+			default -> extraViewportPercent; // 目前只有自定义缩放大小才会用到这个参数
+		};
+	}
+
 	ConfigZoomMode zoomMode;
 	BigDecimal zoomPercent;
 	public void initFromConfig(ConfigBean config)
@@ -86,23 +114,34 @@ public class PiviImageForm
 	private static Color colorBackground = Objects.requireNonNullElse(UIManager.getColor("background"), new Color(Colors.WhiteSmoke));
 	private void createUIComponents()
 	{
-		pViewport = new JPanel(){
-			@Override
-			public void paint(Graphics g)
+		pViewport = new PanelRenderImage();
+
+		menu = new FramePopupMenu();
+
+		pViewport.setComponentPopupMenu(menu);
+		vml = this.new ViewportMouseListener();
+		pViewport.addMouseListener(vml);
+		pViewport.addMouseWheelListener(vml);
+		pViewport.addMouseMotionListener(vml);
+	}
+	private class PanelRenderImage extends JPanel
+	{
+		@Override
+		public void paint(Graphics g)
+		{
+			g = g == null ? this.getGraphics() : g;
+
+			if(g != null)
 			{
-				g = g == null ? this.getGraphics() : g;
-
-				if(g != null)
+				synchronized (LOCK)
 				{
-					synchronized (LOCK)
-					{
-						final int graphicWidth = this.getWidth(), graphicHeight = this.getHeight();
-						if(font == null)
-							font = UIManager.getFont("defaultFont");
-						g.setFont(font);
-						final var size = font.getSize();
+					final int graphicWidth = this.getWidth(), graphicHeight = this.getHeight();
+					if(font == null)
+						font = UIManager.getFont("defaultFont");
+					g.setFont(font);
+					final var size = font.getSize();
 
-						if(status != null)
+					if(status != null)
 						switch (status)
 						{
 							case Finished -> {
@@ -119,7 +158,10 @@ public class PiviImageForm
 								g.setColor(colorCommon);
 								g.drawString(urlString, 0, size);
 								g.drawString(imageWidth + " × " + imageHeight, 0, size * 2 + 4);
-//								g.drawString(imageType, 0, size * 3 + 8);
+								g.drawString(viewportPercent.toPlainString(), 0, size * 3 + 8);
+								g.drawString("vp: " + getViewportWidth() + " - " + getViewportHeight(), 0, size * 4 + 12);
+								g.drawString("frame: " + frame.getWidth() + " - " + frame.getHeight(), 0, size * 5 + 16);
+								g.drawString("mode: " + zoomMode, 0, size * 6 + 20);
 							}
 							case Error -> {
 								var message = exception.getMessage();
@@ -133,19 +175,10 @@ public class PiviImageForm
 								}
 							}
 						}
-					}
-					g.dispose();
 				}
+				g.dispose();
 			}
-		};
-
-		menu = new FramePopupMenu();
-
-		pViewport.setComponentPopupMenu(menu);
-		vml = this.new ViewportMouseListener();
-		pViewport.addMouseListener(vml);
-		pViewport.addMouseWheelListener(vml);
-		pViewport.addMouseMotionListener(vml);
+		}
 	}
 	private class FramePopupMenu extends JPopupMenu
 	{
@@ -193,9 +226,12 @@ public class PiviImageForm
 			var trans = new StringSelection(value);
 			cp.setContents(trans, null);
 		}
-		static void adjustImageZoom(ConfigZoomMode mode)
+		void adjustImageZoom(ConfigZoomMode mode)
 		{
-			;
+			synchronized (LOCK)
+			{
+				PiviImageForm.this.adjustImageZoom(mode, null);
+			}
 		}
 	}
 
@@ -238,6 +274,7 @@ public class PiviImageForm
 				{
 					PiviImageForm.this.viewportPercent =
 							PiviImageForm.this.viewportPercent.add(PiviImageForm.this.zoomPercent);
+					PiviImageForm.this.zoomMode = ConfigZoomMode.CustomPercent;
 				}
 				else if(movement > 0) // down
 				{
@@ -247,6 +284,7 @@ public class PiviImageForm
 					{
 						PiviImageForm.this.viewportPercent = new BigDecimal("0.01");
 					}
+					PiviImageForm.this.zoomMode = ConfigZoomMode.CustomPercent;
 				}
 			}
 		}
@@ -354,6 +392,7 @@ public class PiviImageForm
 						PiviImageForm.this.iob = _ii.getImageObserver();
 						PiviImageForm.this.imageWidth = _i.getWidth(PiviImageForm.this.iob);
 						PiviImageForm.this.imageHeight = _i.getHeight(PiviImageForm.this.iob);
+						PiviImageForm.this.adjustImageZoom(PiviImageForm.this.zoomMode, PiviImageForm.this.zoomPercent);
 					}
 
 					PiviImageForm.this.pViewport.repaint();

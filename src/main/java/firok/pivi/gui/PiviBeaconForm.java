@@ -35,8 +35,6 @@ public class PiviBeaconForm
 	public JSpinner inZoomSpped;
 	public JSpinner inBeaconPort;
 	private JComboBox<EnumComboLAF> cbxLAF;
-	private JPanel pImageDropBox;
-	private JLabel pLabelImageDropBox;
 	private JRadioButton rbFitAuto;
 
 	private enum EnumComboLAF
