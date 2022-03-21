@@ -1,5 +1,6 @@
 package firok.pivi.gui;
 
+import firok.pivi.Pivi;
 import firok.pivi.config.ConfigBean;
 import firok.pivi.config.ConfigZoomMode;
 import firok.pivi.util.Colors;
@@ -25,9 +26,11 @@ public class PiviImageForm
 	public JPanel pViewport;
 	public JPopupMenu menu;
 	public ViewportMouseListener vml;
+	public ViewportKeyListener vkl;
 
-
-
+	/**
+	 * 多线程数据锁
+	 */
 	public final Object LOCK = new Object();
 	public URL url;
 	public String urlString;
@@ -39,11 +42,41 @@ public class PiviImageForm
 	public int imageWidth, imageHeight;
 	public ImageObserver iob;
 
+	/**
+	 * 是否正在拖动视角
+	 */
 	public boolean isViewportDragging;
+	/**
+	 * 视角是否被拖动过, 用于决定窗口更改大小时是否会改变视角位置
+	 */
+	public boolean isViewportDragged;
+	/**
+	 * 前次鼠标所在位置, 用于拖拽视角的坐标计算
+	 */
 	public int viewportDragPreX, viewportDragPreY;
+	/**
+	 * 当前视角偏移量
+	 */
 	public int viewportLocX, viewportLocY;
+	/**
+	 * 当前视角渲染百分比
+	 */
 	public BigDecimal viewportPercent;
+	/**
+	 * 当前图片是否为动图
+	 */
 	public boolean isAnimatedImage;
+	/**
+	 * 是否处于Shift模式
+	 */
+	public boolean isShiftMode;
+	/**
+	 * 是否处于Alt模式
+	 */
+	public boolean isAltMode;
+	/**
+	 * 当前是否需要重绘
+	 */
 	public boolean needRepainting;
 	public boolean needRepaint()
 	{
@@ -59,41 +92,59 @@ public class PiviImageForm
 
 	public static final BigDecimal B100 = new BigDecimal(100);
 
+	/**
+	 * 根据指定的填充模式设定渲染参数
+	 */
 	private void adjustImageZoom(ConfigZoomMode mode, BigDecimal extraViewportPercent)
 	{
-		final int renderWidth = pViewport.getWidth(), renderHeight = pViewport.getHeight();
+		final int panelWidth = pViewport.getWidth(), panelHeight = pViewport.getHeight();
 
 		zoomMode = mode;
 		needRepainting = true;
+		isViewportDragged = false;
 
-		viewportLocX = 0;
-		viewportLocY = 0;
-
-		viewportPercent = switch (mode)
+		if(imageWidth != 0 && imageHeight != 0)
 		{
-			case OriginSize -> B100;
-			case FitWindowWidth -> B100.multiply(new BigDecimal(renderWidth))
-					.divide(new BigDecimal(imageWidth), RoundingMode.CEILING);
-			case FitWindowHeight -> B100.multiply(new BigDecimal(renderHeight))
-					.divide(new BigDecimal(imageHeight), RoundingMode.CEILING);
-			case FitAuto -> imageHeight > imageWidth ?
-					B100.multiply(new BigDecimal(renderHeight))
-							.divide(new BigDecimal(imageHeight), RoundingMode.CEILING) :
-					B100.multiply(new BigDecimal(renderWidth))
-							.divide(new BigDecimal(imageWidth), RoundingMode.CEILING);
-			default -> extraViewportPercent; // 目前只有自定义缩放大小才会用到这个参数
-		};
+			// 计算缩放百分比
+			viewportPercent = switch (mode)
+			{
+				case OriginSize -> B100;
+				case FitWindowWidth -> B100.multiply(new BigDecimal(panelWidth))
+						.divide(new BigDecimal(imageWidth), RoundingMode.CEILING);
+				case FitWindowHeight -> B100.multiply(new BigDecimal(panelHeight))
+						.divide(new BigDecimal(imageHeight), RoundingMode.CEILING);
+				case FitAuto -> panelHeight > panelWidth ?
+						B100.multiply(new BigDecimal(panelWidth))
+								.divide(new BigDecimal(imageWidth), RoundingMode.CEILING) :
+						B100.multiply(new BigDecimal(panelHeight))
+								.divide(new BigDecimal(imageHeight), RoundingMode.CEILING);
+				default -> Objects.requireNonNullElse(extraViewportPercent, B100); // 目前只有自定义缩放大小才会用到这个参数
+			};
+			// 计算视角位置
+			final int vpWidth = getViewportWidth(), vpHeight = getViewportHeight();
+			viewportLocX = vpWidth > panelWidth ?
+					0 :
+					(panelWidth - vpWidth) / 2;
+			viewportLocY = vpHeight > panelHeight ?
+					0 :
+					(panelHeight - vpHeight) / 2;
+		}
+		else
+		{
+			viewportPercent = B100;
+			viewportLocX = 0;
+			viewportLocY = 0;
+		}
 	}
 
 	ConfigZoomMode zoomMode;
 	BigDecimal zoomPercent;
-	public void initFromConfig(ConfigBean config)
+	private void initFromConfig(ConfigBean config)
 	{
 		zoomMode = config.getInitZoomMode();
 
-		zoomPercent = new BigDecimal(config.getInitZoomPercent())
-				.divide(new BigDecimal(100), RoundingMode.CEILING);
-		viewportPercent = new BigDecimal(1);
+		zoomPercent = B100;
+		viewportPercent = B100;
 	}
 
 	public long whenStartImageInformation = -1;
@@ -123,9 +174,32 @@ public class PiviImageForm
 		pViewport.addMouseListener(vml);
 		pViewport.addMouseWheelListener(vml);
 		pViewport.addMouseMotionListener(vml);
+		vkl = this.new ViewportKeyListener();
 	}
+
+	public void postInit(ConfigBean config, JFrame frame)
+	{
+		this.initFromConfig(config);
+		this.frame = frame;
+		frame.addKeyListener(vkl);
+	}
+
 	private class PanelRenderImage extends JPanel
 	{
+		public PanelRenderImage()
+		{
+			super();
+
+			addComponentListener(new ComponentAdapter()
+			{
+				@Override
+				public void componentResized(ComponentEvent e)
+				{
+					if(!isViewportDragged)
+						PiviImageForm.this.adjustImageZoom(PiviImageForm.this.zoomMode, PiviImageForm.this.zoomPercent);
+				}
+			});
+		}
 		@Override
 		public void paint(Graphics g)
 		{
@@ -268,24 +342,43 @@ public class PiviImageForm
 		{
 			synchronized (LOCK)
 			{
+
 				final int movement = e.getWheelRotation();
 				needRepainting = true;
+				final int viewportWidthOld = getViewportWidth(), viewportHeightOld = getViewportHeight();
+				PiviImageForm.this.zoomMode = ConfigZoomMode.CustomPercent;
+				PiviImageForm.this.isViewportDragged = true;
+
 				if(movement < 0) // up
 				{
 					PiviImageForm.this.viewportPercent =
-							PiviImageForm.this.viewportPercent.add(PiviImageForm.this.zoomPercent);
-					PiviImageForm.this.zoomMode = ConfigZoomMode.CustomPercent;
+							new BigDecimal(
+									PiviImageForm.this.viewportPercent.add(
+											new BigDecimal(Pivi.config.getZoomSpeed())
+									).longValue()
+							);
+
 				}
 				else if(movement > 0) // down
 				{
 					PiviImageForm.this.viewportPercent =
-							PiviImageForm.this.viewportPercent.subtract(PiviImageForm.this.zoomPercent);
-					if(PiviImageForm.this.viewportPercent.doubleValue() < 0.01)
+							PiviImageForm.this.viewportPercent.subtract(
+									new BigDecimal(Pivi.config.getZoomSpeed())
+							);
+
+					final int viewportWidthTemp = getViewportWidth(), viewportHeightTemp = getViewportHeight();
+					if(viewportWidthTemp < 16 && viewportHeightTemp < 16)
 					{
-						PiviImageForm.this.viewportPercent = new BigDecimal("0.01");
+						viewportPercent = imageHeight > imageWidth ?
+								B100.multiply(new BigDecimal(16))
+										.divide(new BigDecimal(imageWidth), RoundingMode.CEILING) :
+								B100.multiply(new BigDecimal(16))
+										.divide(new BigDecimal(imageHeight), RoundingMode.CEILING);
 					}
-					PiviImageForm.this.zoomMode = ConfigZoomMode.CustomPercent;
 				}
+				final int viewportWidthNew = getViewportWidth(), viewportHeightNew = getViewportHeight();
+				viewportLocX -= (viewportWidthNew - viewportWidthOld) / 2;
+				viewportLocY -= (viewportHeightNew - viewportHeightOld) / 2;
 			}
 		}
 
@@ -303,6 +396,7 @@ public class PiviImageForm
 				viewportDragPreX = currentX;
 				viewportDragPreY = currentY;
 				needRepainting = true;
+				isViewportDragged = true;
 			}
 		}
 
@@ -317,6 +411,20 @@ public class PiviImageForm
 					viewportDragPreY = e.getY();
 				}
 			}
+		}
+	}
+	public class ViewportKeyListener extends KeyAdapter
+	{
+		@Override
+		public void keyPressed(KeyEvent e)
+		{
+			System.out.println("pressed shift:" + (e.getKeyCode() == KeyEvent.VK_SHIFT));
+		}
+
+		@Override
+		public void keyReleased(KeyEvent e)
+		{
+			System.out.println("released shift:" + (e.getKeyCode() == KeyEvent.VK_SHIFT));
 		}
 	}
 

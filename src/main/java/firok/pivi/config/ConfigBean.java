@@ -40,6 +40,8 @@ public class ConfigBean
 
 		if(bean.beaconPort != null) this.beaconPort = bean.beaconPort;
 
+		if(bean.zoomSpeed != null) this.zoomSpeed = bean.zoomSpeed;
+
 		if(bean.timestamp != null) this.timestamp = bean.timestamp;
 	}
 
@@ -72,6 +74,8 @@ public class ConfigBean
 					case "initHeight" -> ret.initHeight = Integer.valueOf(value);
 					case "initFrameState" -> ret.initFrameState = Integer.valueOf(value);
 
+					case "zoomSpeed" -> ret.zoomSpeed = Integer.valueOf(value);
+
 					case "beaconPort" -> ret.beaconPort = Integer.valueOf(value);
 
 					case "timestamp" -> ret.timestamp = Long.valueOf(value);
@@ -98,7 +102,8 @@ public class ConfigBean
 			out.println("initHeight="+initHeight);
 			out.println("initFrameState="+ initFrameState);
 			out.println("timestamp="+timestamp);
-			out.println("beaconPort"+beaconPort);
+			out.println("beaconPort="+beaconPort);
+			out.println("zoomSpeed="+zoomSpeed);
 
 			out.flush();
 			ofs.flush();
