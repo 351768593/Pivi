@@ -84,10 +84,12 @@ public class PiviImageForm
 			this.isAnimatedImage ||
 			this.needRepainting
 		) && ( // 判断窗体状态
-			this.frame != null &&
-			this.frame.isFocused() &&
-			this.frame.isVisible()
+			isFrameReady()
 		);
+	}
+	private boolean isFrameReady()
+	{
+		return this.frame != null && this.frame.isFocused() && this.frame.isVisible();
 	}
 
 	public static final BigDecimal B100 = new BigDecimal(100);
@@ -200,6 +202,9 @@ public class PiviImageForm
 				}
 			});
 		}
+		static final Color colorShiftModeBackground = new Color(0x545a6b);
+		static final Color colorShiftModeForeground = new Color(0xB8CAFC);
+		static final Font fontShiftModeForeground = new Font("黑体", Font.BOLD, 16);
 		@Override
 		public void paint(Graphics g)
 		{
@@ -229,13 +234,34 @@ public class PiviImageForm
 										iob
 								);
 
-								g.setColor(colorCommon);
-								g.drawString(urlString, 0, size);
-								g.drawString(imageWidth + " × " + imageHeight, 0, size * 2 + 4);
-								g.drawString(viewportPercent.toPlainString(), 0, size * 3 + 8);
-								g.drawString("vp: " + getViewportWidth() + " - " + getViewportHeight(), 0, size * 4 + 12);
-								g.drawString("frame: " + frame.getWidth() + " - " + frame.getHeight(), 0, size * 5 + 16);
-								g.drawString("mode: " + zoomMode, 0, size * 6 + 20);
+//								g.setColor(colorCommon);
+//								g.drawString(urlString, 0, size);
+//								g.drawString(imageWidth + " × " + imageHeight, 0, size * 2 + 4);
+//								g.drawString(viewportPercent.toPlainString(), 0, size * 3 + 8);
+//								g.drawString("vp: " + getViewportWidth() + " - " + getViewportHeight(), 0, size * 4 + 12);
+//								g.drawString("frame: " + frame.getWidth() + " - " + frame.getHeight(), 0, size * 5 + 16);
+//								g.drawString("mode: " + zoomMode, 0, size * 6 + 20);
+
+								if(isShiftMode) // Shift模式 渲染一个状态标志出来
+								{
+									g.setFont(fontShiftModeForeground);
+
+									// 左上侧缩放百分比
+									var strNumber = viewportPercent.toPlainString();
+									int lengthNumber = strNumber.length();
+									int pixExtend = (lengthNumber > 2 ? lengthNumber - 2 : 0) * 8;
+									g.setColor(colorShiftModeBackground);
+									g.fillRect(20, 20, 43 + pixExtend, 22);
+									g.setColor(colorShiftModeForeground);
+									g.drawString(strNumber, 24, 36);
+									g.drawString("%", 47 + pixExtend, 36);
+
+									// 左下侧标志
+									g.setColor(colorShiftModeBackground);
+									g.fillRect(20, graphicHeight - 20 - 16 - 8, 52, 22);
+									g.setColor(colorShiftModeForeground);
+									g.drawString("Shift", 26, graphicHeight - 20 - 8);
+								}
 							}
 							case Error -> {
 								var message = exception.getMessage();
@@ -342,6 +368,7 @@ public class PiviImageForm
 		{
 			synchronized (LOCK)
 			{
+				if(!isFrameReady()) return;
 
 				final int movement = e.getWheelRotation();
 				needRepainting = true;
@@ -349,33 +376,43 @@ public class PiviImageForm
 				PiviImageForm.this.zoomMode = ConfigZoomMode.CustomPercent;
 				PiviImageForm.this.isViewportDragged = true;
 
-				if(movement < 0) // up
+				if(isShiftMode)
 				{
 					PiviImageForm.this.viewportPercent =
-							new BigDecimal(
-									PiviImageForm.this.viewportPercent.add(
-											new BigDecimal(Pivi.config.getZoomSpeed())
-									).longValue()
-							);
-
+							movement < 0 ? PiviImageForm.this.viewportPercent.add(BigDecimal.ONE) :
+									PiviImageForm.this.viewportPercent.subtract(BigDecimal.ONE);
 				}
-				else if(movement > 0) // down
+				else
 				{
-					PiviImageForm.this.viewportPercent =
-							PiviImageForm.this.viewportPercent.subtract(
-									new BigDecimal(Pivi.config.getZoomSpeed())
-							);
-
-					final int viewportWidthTemp = getViewportWidth(), viewportHeightTemp = getViewportHeight();
-					if(viewportWidthTemp < 16 && viewportHeightTemp < 16)
+					if(movement < 0) // up
 					{
-						viewportPercent = imageHeight > imageWidth ?
-								B100.multiply(new BigDecimal(16))
-										.divide(new BigDecimal(imageWidth), RoundingMode.CEILING) :
-								B100.multiply(new BigDecimal(16))
-										.divide(new BigDecimal(imageHeight), RoundingMode.CEILING);
+						PiviImageForm.this.viewportPercent =
+								new BigDecimal(
+										PiviImageForm.this.viewportPercent.add(
+												new BigDecimal(Pivi.config.getZoomSpeed())
+										).longValue()
+								);
+
+					}
+					else if(movement > 0) // down
+					{
+						PiviImageForm.this.viewportPercent =
+								PiviImageForm.this.viewportPercent.subtract(
+										new BigDecimal(Pivi.config.getZoomSpeed())
+								);
+
+						final int viewportWidthTemp = getViewportWidth(), viewportHeightTemp = getViewportHeight();
+						if(viewportWidthTemp < 16 && viewportHeightTemp < 16)
+						{
+							viewportPercent = imageHeight > imageWidth ?
+									B100.multiply(new BigDecimal(16))
+											.divide(new BigDecimal(imageWidth), RoundingMode.CEILING) :
+									B100.multiply(new BigDecimal(16))
+											.divide(new BigDecimal(imageHeight), RoundingMode.CEILING);
+						}
 					}
 				}
+
 				final int viewportWidthNew = getViewportWidth(), viewportHeightNew = getViewportHeight();
 				viewportLocX -= (viewportWidthNew - viewportWidthOld) / 2;
 				viewportLocY -= (viewportHeightNew - viewportHeightOld) / 2;
@@ -418,13 +455,21 @@ public class PiviImageForm
 		@Override
 		public void keyPressed(KeyEvent e)
 		{
-			System.out.println("pressed shift:" + (e.getKeyCode() == KeyEvent.VK_SHIFT));
+			synchronized (PiviImageForm.this.LOCK)
+			{
+				PiviImageForm.this.isShiftMode = true;
+				PiviImageForm.this.needRepainting = true;
+			}
 		}
 
 		@Override
 		public void keyReleased(KeyEvent e)
 		{
-			System.out.println("released shift:" + (e.getKeyCode() == KeyEvent.VK_SHIFT));
+			synchronized (PiviImageForm.this.LOCK)
+			{
+				PiviImageForm.this.isShiftMode = false;
+				PiviImageForm.this.needRepainting = true;
+			}
 		}
 	}
 
@@ -432,15 +477,17 @@ public class PiviImageForm
 	private Thread threadAnimation;
 	public void startLoading(String raw)
 	{
+		stopLoading();
 		threadLoad = new ThreadLoading(raw);
 		threadLoad.start();
-		threadAnimation = new ThreadAnimation();
-		threadAnimation.start();
 	}
 	public void stopLoading()
 	{
 		if(threadLoad != null)
+		{
 			threadLoad.interrupt();
+			threadLoad = null;
+		}
 	}
 
 	private class ThreadLoading extends Thread
@@ -492,6 +539,8 @@ public class PiviImageForm
 						throw new RuntimeException("无法读取为图片: "+_u);
 					}
 
+					frame.setIconImage(_i);
+
 					synchronized (LOCK)
 					{
 						PiviImageForm.this.status = EnumLoadingStatus.Finished;
@@ -514,41 +563,6 @@ public class PiviImageForm
 					PiviImageForm.this.exception = e;
 				}
 			}
-		}
-	}
-	// fixme low 改成多个frame共用一个线程的写法 (协程)
-	private class ThreadAnimation extends Thread
-	{
-		ThreadAnimation()
-		{
-			super();
-			setDaemon(true);
-		}
-
-		@Override
-		public void run()
-		{
-			do
-			{
-				try
-				{
-					synchronized (PiviImageForm.this.LOCK)
-					{
-						if(PiviImageForm.this.needRepaint())
-						{
-							PiviImageForm.this.pViewport.repaint();
-							PiviImageForm.this.needRepainting = false;
-						}
-					}
-					Thread.sleep(25);
-				}
-				catch (Exception e)
-				{
-					e.printStackTrace();
-					break;
-				}
-			}
-			while (true);
 		}
 	}
 }

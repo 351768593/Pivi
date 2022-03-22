@@ -3,23 +3,15 @@ package firok.pivi.gui;
 import firok.pivi.Pivi;
 import firok.pivi.config.ConfigBean;
 import firok.pivi.config.ConfigZoomMode;
-import org.pushingpixels.radiance.theming.api.skin.RadianceAutumnLookAndFeel;
+import lombok.SneakyThrows;
 
 import javax.swing.*;
-import javax.swing.event.ChangeEvent;
-import javax.swing.event.ChangeListener;
-import javax.swing.event.ListDataListener;
-import javax.swing.plaf.metal.MetalLookAndFeel;
-import javax.swing.plaf.nimbus.NimbusLookAndFeel;
-import java.awt.datatransfer.DataFlavor;
-import java.awt.datatransfer.Transferable;
-import java.awt.dnd.DnDConstants;
-import java.awt.dnd.DropTarget;
-import java.awt.dnd.DropTargetEvent;
-import java.awt.dnd.DropTargetListener;
+import javax.swing.filechooser.FileFilter;
+import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
+import java.net.URI;
 import java.util.Arrays;
-import java.util.Collections;
 
 public class PiviBeaconForm
 {
@@ -36,6 +28,23 @@ public class PiviBeaconForm
 	public JSpinner inBeaconPort;
 	private JComboBox<EnumComboLAF> cbxLAF;
 	private JRadioButton rbFitAuto;
+	private JButton btnSelect;
+	private JButton viewOnGitHubButton;
+	private JLabel labelPivi;
+	private JLabel labelVersion;
+	private JLabel labelDescription;
+
+	private void createUIComponents()
+	{
+		labelPivi = new JLabel("Pivi", JLabel.CENTER);
+		labelPivi.setFont(new Font("Ink Free", Font.BOLD, 48));
+
+		labelVersion = new JLabel(Pivi.version + "  by " + Pivi.author, JLabel.CENTER);
+		labelVersion.setFont(new Font("Ink Free", Font.PLAIN, 16));
+
+		labelDescription = new JLabel(Pivi.description);
+		labelDescription.setFont(new Font("Ink Free", Font.PLAIN, 22));
+	}
 
 	private enum EnumComboLAF
 	{
@@ -93,6 +102,7 @@ public class PiviBeaconForm
 		}
 	}
 
+	private File filePreviousFolder = new File("./");
 	public PiviBeaconForm()
 	{
 		btnLoad.addActionListener(e ->
@@ -109,6 +119,52 @@ public class PiviBeaconForm
 				}
 			}
 //			inUrl.setText("");
+		});
+		btnSelect.addActionListener(e ->
+		{
+			var dialog = new JFileChooser(filePreviousFolder);
+			dialog.setDragEnabled(false);
+			dialog.setFileFilter(new FileFilter()
+			{
+				static final String[] suffixes = new String[]{
+						".jpg", ".jpeg", ".gif", ".png",
+				};
+				static final String suffixJoint = String.join(", ", suffixes);
+
+				@Override
+				public boolean accept(File f)
+				{
+					var name = f.getName();
+					for(var suffix : suffixes)
+					{
+						if(name.endsWith(suffix)) return true;
+					}
+					return false;
+				}
+
+				@Override
+				public String getDescription()
+				{
+					return suffixJoint;
+				}
+			});
+			dialog.setAcceptAllFileFilterUsed(true);
+			dialog.setFileSelectionMode(JFileChooser.FILES_ONLY);
+			dialog.setMultiSelectionEnabled(true);
+
+			var result = dialog.showOpenDialog(PiviBeaconForm.this.pBase);
+			if(result != JFileChooser.APPROVE_OPTION) return;
+
+			var arrFileSelected = dialog.getSelectedFiles();
+			if(arrFileSelected.length > 0)
+			{
+				filePreviousFolder = arrFileSelected[0].getParentFile();
+			}
+			for(var objFileSelected : arrFileSelected)
+			{
+				var pathFileSelected = objFileSelected.getAbsolutePath();
+				Pivi.initFrameImage(pathFileSelected);
+			}
 		});
 
 		rbFitAuto.addActionListener(e -> Pivi.config.setInitZoomMode(ConfigZoomMode.FitAuto));
@@ -133,6 +189,22 @@ public class PiviBeaconForm
 			}
 		});
 
+		viewOnGitHubButton.addActionListener(e ->
+		{
+			try
+			{
+				var desktop = Desktop.getDesktop();
+				if(desktop.isSupported(Desktop.Action.BROWSE))
+				{
+					desktop.browse(new URI(Pivi.url));
+				}
+			}
+			catch (Exception err)
+			{
+				System.err.println("无法打开链接");
+				err.printStackTrace(System.err);
+			}
+		});
 	}
 
 	private void changeLAF(String lafClassName)

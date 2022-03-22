@@ -6,22 +6,19 @@
 
     <groupId>firok</groupId>
     <artifactId>pivi</artifactId>
-    <version>0.1.0</version>
+    <version>0.2.9</version>
+
+    <name>Pivi</name>
+    <url>https://github.com/351768593/Pivi</url>
+    <description>A simple picture viewer.</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
+        <project.author>Firok</project.author>
     </properties>
 
     <dependencies>
-        <!-- https://mvnrepository.com/artifact/com.bulenkov/darcula -->
-<!--        <dependency>-->
-<!--            <groupId>com.bulenkov</groupId>-->
-<!--            <artifactId>darcula</artifactId>-->
-<!--            <version>2018.2</version>-->
-<!--            <scope>system</scope>-->
-<!--            <systemPath>${project.basedir}/lib/darcula.jar</systemPath>-->
-<!--        </dependency>-->
         <!-- https://mvnrepository.com/artifact/com.formdev/flatlaf -->
         <dependency>
             <groupId>com.formdev</groupId>
@@ -69,5 +66,34 @@
 
 
     </dependencies>
+
+    <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>project.properties</include>
+                </includes>
+                <filtering>true</filtering>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <includes>
+                    <include>icon.png</include>
+                </includes>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
+    </build>
+
+    <developers>
+        <developer>
+            <id>firok</id>
+            <name>Firok</name>
+            <email>firok@qq.com</email>
+            <url>https://firok.space</url>
+            <timezone>+8</timezone>
+        </developer>
+    </developers>
 
 </project>
