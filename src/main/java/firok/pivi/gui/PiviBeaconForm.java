@@ -3,6 +3,7 @@ package firok.pivi.gui;
 import firok.pivi.Pivi;
 import firok.pivi.config.ConfigBean;
 import firok.pivi.config.ConfigZoomMode;
+import firok.pivi.util.BrowserUtil;
 import lombok.SneakyThrows;
 
 import javax.swing.*;
@@ -189,28 +190,30 @@ public class PiviBeaconForm
 			}
 		});
 
-		viewOnGitHubButton.addActionListener(e ->
-		{
-			try
-			{
-				var desktop = Desktop.getDesktop();
-				if(desktop.isSupported(Desktop.Action.BROWSE))
-				{
-					desktop.browse(new URI(Pivi.url));
-				}
-			}
-			catch (Exception err)
-			{
-				System.err.println("无法打开链接");
-				err.printStackTrace(System.err);
-			}
-		});
+		viewOnGitHubButton.addActionListener(e -> BrowserUtil.accessURI(Pivi.url));
 	}
 
 	private void changeLAF(String lafClassName)
 	{
-		Pivi.changeLAF(lafClassName);
-		Pivi.config.setLafClassName(lafClassName);
+		try
+		{
+			Pivi.changeLAF(lafClassName);
+			Pivi.config.setLafClassName(lafClassName);
+		}
+		// fixme low 这个地方的错误很怪
+		//   暂时不确定原因是什么
+		//   以后有空研究一下
+		//   目前怀疑是初始化主题的错误导致的
+		catch (Exception e)
+		{
+
+			JOptionPane.showMessageDialog(
+					null,
+					"重启 Pivi 以完成此主题切换"
+			);
+			Pivi.config.setLafClassName(lafClassName);
+			Pivi.extinguish();
+		}
 	}
 
 	public void loadConfig(ConfigBean config)

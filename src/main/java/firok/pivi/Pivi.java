@@ -2,6 +2,7 @@ package firok.pivi;
 
 import firok.pivi.beacon.BeaconLit;
 import firok.pivi.config.ConfigBean;
+import firok.pivi.config.QuickSaveBean;
 import firok.pivi.gui.PiviBeaconForm;
 import firok.pivi.gui.PiviImageForm;
 import firok.pivi.util.*;
@@ -59,6 +60,7 @@ public class Pivi
 	}
 
 	public static final File fileConfig = new File("./pivi.conf");
+	public static final File fileQSave = new File("./qsave.conf");
 
 	private static void initLAF(String lafClassName)
 	{
@@ -105,7 +107,13 @@ public class Pivi
 		catch (Exception ignored) { }
 	}
 
-	public final Object LOCK = new Object();
+	public static QuickSaveBean qsave;
+	public static void initQSave()
+	{
+		qsave = QuickSaveBean.fromFile(fileQSave);
+	}
+
+//	public final Object LOCK = new Object();
 	public static JFrame frameBeacon;
 	public static List<JFrame> listFrameImage = new Vector<>();
 	public static List<PiviImageForm> listPiviImage = new Vector<>();
@@ -194,6 +202,51 @@ public class Pivi
 			frame.setVisible(true);
 		});
 	}
+	public static void initFrameImage(Image image)
+	{
+		EventQueue.invokeLater(()->{
+			JFrame frame = new JFrame();
+			var piviImage = new PiviImageForm();
+			piviImage.postInit(config, frame);
+
+			// 标准操作
+			frame.setContentPane(piviImage.pViewport);
+			frame.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
+			// 根据配置文件修改大小
+			frame.setLocation(config.getInitLocX(), config.getInitLocY());
+			frame.setSize(config.getInitWidth(), config.getInitHeight());
+			frame.setExtendedState(config.getInitFrameState());
+			frame.setTitle("剪切板图像");
+			if(imageIcon != null) frame.setIconImage(imageIcon);
+
+			frame.addWindowListener(new WindowAdapter()
+			{
+				@Override
+				public void windowOpened(WindowEvent e)
+				{
+					piviImage.startLoading(image);
+					listFrameImage.add(frame);
+					listPiviImage.add(piviImage);
+				}
+
+				@Override
+				public void windowClosing(WindowEvent e)
+				{
+					piviImage.stopLoading();
+					listFrameImage.remove(frame);
+					listPiviImage.remove(piviImage);
+				}
+			});
+
+			frame.setVisible(true);
+		});
+	}
+
+	public static void extinguish()
+	{
+		Pivi.saveConfig();
+		System.exit(0);
+	}
 
 	public static void main(String[] args)
 	{
@@ -204,6 +257,7 @@ public class Pivi
 		else // 启动本体
 		{
 			initConfig();
+			initQSave();
 			if(ac.port != null)
 			{
 				config.setBeaconPort(ac.port);
@@ -245,7 +299,7 @@ public class Pivi
 	private static void run_version()
 	{
 		System.out.println(name + " " + version + " by " + author);
-		System.out.println(url);
+		System.out.println("more information: " + url);
 	}
 	private static void run_help()
 	{

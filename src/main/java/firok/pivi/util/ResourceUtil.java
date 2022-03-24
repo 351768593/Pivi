@@ -1,6 +1,7 @@
 package firok.pivi.util;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.net.URL;
 
 public class ResourceUtil
@@ -43,6 +44,29 @@ public class ResourceUtil
 		catch (Exception e)
 		{
 			return null;
+		}
+	}
+
+
+	/**
+	 * @param file 要写入的指定文件
+	 * @param bytes 要写入的数据内容
+	 * @return 是否写入成功
+	 */
+	public static boolean writeBytes(File file, byte[] bytes)
+	{
+		try
+		{
+			try(var ofs = new FileOutputStream(file))
+			{
+				ofs.write(bytes);
+				ofs.flush();
+			}
+			return true;
+		}
+		catch (Exception e)
+		{
+			return false;
 		}
 	}
 

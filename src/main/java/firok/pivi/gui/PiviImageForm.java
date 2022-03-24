@@ -3,20 +3,19 @@ package firok.pivi.gui;
 import firok.pivi.Pivi;
 import firok.pivi.config.ConfigBean;
 import firok.pivi.config.ConfigZoomMode;
-import firok.pivi.util.Colors;
-import firok.pivi.util.ResourceUtil;
+import firok.pivi.util.*;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
-import javax.swing.event.MenuKeyEvent;
-import javax.swing.event.MenuKeyListener;
 import java.awt.*;
-import java.awt.datatransfer.Clipboard;
-import java.awt.datatransfer.ClipboardOwner;
-import java.awt.datatransfer.StringSelection;
 import java.awt.event.*;
+import java.awt.image.BufferedImage;
 import java.awt.image.ImageObserver;
+import java.io.File;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Objects;
 
@@ -289,16 +288,25 @@ public class PiviImageForm
 		final JMenuItem miImageFitHeight;
 		final JMenuItem miImageFitWidth;
 		final JMenuItem miImageOriginSize;
+
+		final JLabel labelReading;
+		final JLabel labelNoResult;
+		final JPanel panelListQRCodes;
+
+		java.util.List<com.google.zxing.Result> listResult;
+		java.util.List<JMenuItem> listItemResult;
 		FramePopupMenu()
 		{
 			super();
-			miCopyFullURL = new JMenuItem("复制完整URL");
-			miCopyFullURL.addActionListener(e -> putTextIntoClipboard(PiviImageForm.this.urlString));
+			miCopyFullURL = new JMenuItem("📋 | 完整 URL");
+			miCopyFullURL.addActionListener(e -> ClipboardUtil.putTextIntoClipboard(PiviImageForm.this.urlString));
 			add(miCopyFullURL);
 
-			miCopyFullShort = new JMenuItem("复制文件名");
-			miCopyFullShort.addActionListener(e -> putTextIntoClipboard(PiviImageForm.this.urlShort));
+			miCopyFullShort = new JMenuItem("📋 | 文件名");
+			miCopyFullShort.addActionListener(e -> ClipboardUtil.putTextIntoClipboard(PiviImageForm.this.urlShort));
 			add(miCopyFullShort);
+
+			add(new JSeparator());
 
 
 			miImageFitAuto = new JMenuItem("自动适应窗口大小");
@@ -317,15 +325,92 @@ public class PiviImageForm
 			miImageOriginSize.addActionListener(e -> adjustImageZoom(ConfigZoomMode.OriginSize));
 			add(miImageOriginSize);
 
+			add(new JSeparator());
 
+			listResult = new java.util.ArrayList<>();
+			listItemResult = new java.util.ArrayList<>();
+
+			labelReading = new JLabel("(二维码识别中...)");
+			labelReading.setVisible(true);
+			add(labelReading);
+
+			labelNoResult = new JLabel("(无二维码)");
+			labelNoResult.setVisible(false);
+			add(labelNoResult);
+
+			panelListQRCodes = new JPanel();
+			add(panelListQRCodes);
+
+			add(new JSeparator());
+
+			for(var objMapping : Pivi.qsave.getListMapping())
+			{
+				var name = objMapping.name;
+				var value = objMapping.value;
+				var mi = new JMenuItem("📥 | " + ( name.length() > 0 ? name : value ));
+				mi.addActionListener(e -> {
+					synchronized (PiviImageForm.this.LOCK)
+					{
+						if(PiviImageForm.this.status == EnumLoadingStatus.Finished)
+						{
+							// todo high 实现qsave功能
+//							var file = new File(value, PiviImageForm.this.);
+//							var bytes = new byte[0];
+//							try
+//							{
+//								ResourceUtil.writeBytes(value, bytes);
+//							}
+//							catch (Exception ignored) { }
+						}
+					}
+				});
+				add(mi);
+			}
+
+			pack();
 		}
 
-		static void putTextIntoClipboard(String value)
+		public void setListResult(java.util.List<com.google.zxing.Result> listResult)
 		{
-			var cp = Toolkit.getDefaultToolkit().getSystemClipboard();
-			var trans = new StringSelection(value);
-			cp.setContents(trans, null);
+			this.panelListQRCodes.removeAll();
+			this.listResult.clear();
+			this.listItemResult.clear();
+
+			if(listResult != null)
+			{
+				this.listResult.addAll(listResult);
+				EventQueue.invokeLater(()-> listResult.forEach(result -> {
+
+					var content = result.getText();
+					var contentCut = content.length() >= 20 ?
+							content.substring(0, 17) + "..." :
+							content;
+					var miClipboard = new JMenuItem("📋 | " + contentCut);
+					miClipboard.addActionListener(e -> ClipboardUtil.putTextIntoClipboard(content));
+					FramePopupMenu.this.panelListQRCodes.add(miClipboard);
+					FramePopupMenu.this.listItemResult.add(miClipboard);
+
+					// 尝试识别是否为uri
+					try
+					{
+						var url = new URL(content);
+						var uri = url.toURI();
+						var miUri = new JMenuItem("🌏 | "+contentCut);
+						miUri.addActionListener(e -> BrowserUtil.accessURI(uri));
+						FramePopupMenu.this.panelListQRCodes.add(miUri);
+						FramePopupMenu.this.listItemResult.add(miUri);
+					}
+					catch (MalformedURLException | URISyntaxException ignored) { }
+				}));
+			}
+
+			boolean hasQRCodes = !this.listResult.isEmpty();
+			FramePopupMenu.this.labelNoResult.setVisible(!hasQRCodes);
+			FramePopupMenu.this.labelReading.setVisible(false);
+			FramePopupMenu.this.pack();
+			FramePopupMenu.this.repaint();
 		}
+
 		void adjustImageZoom(ConfigZoomMode mode)
 		{
 			synchronized (LOCK)
@@ -478,7 +563,13 @@ public class PiviImageForm
 	public void startLoading(String raw)
 	{
 		stopLoading();
-		threadLoad = new ThreadLoading(raw);
+		threadLoad = new ThreadLoadURI(raw);
+		threadLoad.start();
+	}
+	public void startLoading(Image image)
+	{
+		stopLoading();
+		threadLoad = new ThreadLoadImage(image);
 		threadLoad.start();
 	}
 	public void stopLoading()
@@ -490,10 +581,59 @@ public class PiviImageForm
 		}
 	}
 
-	private class ThreadLoading extends Thread
+	protected class ThreadLoader extends Thread
+	{
+		protected ThreadLoader()
+		{
+			super();
+		}
+		protected void startLoading(URL _u)
+		{
+			PiviImageForm.this.url = _u;
+			var _us = _u.toString();
+			PiviImageForm.this.urlString = _us;
+			var _ius = -1;
+			_ius = (_ius = _us.lastIndexOf('/')) > 0 ? _ius : _us.lastIndexOf('\\');
+			PiviImageForm.this.urlShort = _ius > 0 ? _us.substring(_ius + 1) : _us;
+			PiviImageForm.this.status = EnumLoadingStatus.Started;
+		}
+		protected void finishLoad(ImageIcon _ii, Image _i, boolean _isAnimatedImage)
+		{
+			PiviImageForm.this.status = EnumLoadingStatus.Finished;
+			PiviImageForm.this.image = _i;
+			PiviImageForm.this.isAnimatedImage = _isAnimatedImage;
+			PiviImageForm.this.iob = _ii.getImageObserver();
+			PiviImageForm.this.imageWidth = _i.getWidth(PiviImageForm.this.iob);
+			PiviImageForm.this.imageHeight = _i.getHeight(PiviImageForm.this.iob);
+			PiviImageForm.this.adjustImageZoom(PiviImageForm.this.zoomMode, PiviImageForm.this.zoomPercent);
+		}
+		protected void errorURL(String raw)
+		{
+			PiviImageForm.this.url = null;
+			PiviImageForm.this.status = EnumLoadingStatus.Error;
+			PiviImageForm.this.exception = new Exception("无法识别路径: "+raw);
+			PiviImageForm.this.image = null;
+		}
+		protected void errorReadImage(Exception e)
+		{
+			PiviImageForm.this.status = EnumLoadingStatus.Error;
+			PiviImageForm.this.exception = e;
+		}
+		protected void scanQRCodes(Image _i)
+		{
+			var image = new BufferedImage(imageWidth, imageHeight, BufferedImage.TYPE_INT_ARGB);
+			var g = image.createGraphics();
+			g.drawImage(_i, 0, 0, imageWidth, imageHeight, (img, infoflags, x, y, width, height) -> false);
+			g.dispose();
+			var listResult = QRUtil.scanMultiQRCode(image);
+			var menu = (FramePopupMenu) PiviImageForm.this.menu;
+			menu.setListResult(listResult);
+		}
+	}
+	protected class ThreadLoadURI extends ThreadLoader
 	{
 		String raw;
-		ThreadLoading(String raw)
+		ThreadLoadURI(String raw)
 		{
 			super();
 			setDaemon(true);
@@ -504,6 +644,9 @@ public class PiviImageForm
 		public void run()
 		{
 			PiviImageForm.this.status = EnumLoadingStatus.NotStarted;
+			ImageIcon _ii = null;
+			Image _i = null;
+			boolean shouldScanQR = false;
 			try
 			{
 				var _u = ResourceUtil.readUrl(raw);
@@ -511,29 +654,20 @@ public class PiviImageForm
 				{
 					synchronized (LOCK)
 					{
-						PiviImageForm.this.url = null;
-						PiviImageForm.this.status = EnumLoadingStatus.Error;
-						PiviImageForm.this.exception = new Exception("无法识别路径: "+raw);
-						PiviImageForm.this.image = null;
+						errorURL(raw);
 					}
 				}
 				else
 				{
 					synchronized (LOCK)
 					{
-						PiviImageForm.this.url = _u;
-						var _us = _u.toString();
-						PiviImageForm.this.urlString = _us;
-						var _ius = -1;
-						_ius = (_ius = _us.lastIndexOf('/')) > 0 ? _ius : _us.lastIndexOf('\\');
-						PiviImageForm.this.urlShort = _ius > 0 ? _us.substring(_ius + 1) : _us;
-						PiviImageForm.this.status = EnumLoadingStatus.Started;
+						startLoading(_u);
 					}
 
 					var bytes = ResourceUtil.readBytes(_u);
 					var _isAnimatedImage = ResourceUtil.isAnimatedImage(bytes);
-					var _ii = new ImageIcon(bytes);
-					var _i = _ii.getImage();
+					_ii = new ImageIcon(bytes);
+					_i = _ii.getImage();
 					if(_i == null)
 					{
 						throw new RuntimeException("无法读取为图片: "+_u);
@@ -543,13 +677,12 @@ public class PiviImageForm
 
 					synchronized (LOCK)
 					{
-						PiviImageForm.this.status = EnumLoadingStatus.Finished;
-						PiviImageForm.this.image = _i;
-						PiviImageForm.this.isAnimatedImage = _isAnimatedImage;
-						PiviImageForm.this.iob = _ii.getImageObserver();
-						PiviImageForm.this.imageWidth = _i.getWidth(PiviImageForm.this.iob);
-						PiviImageForm.this.imageHeight = _i.getHeight(PiviImageForm.this.iob);
-						PiviImageForm.this.adjustImageZoom(PiviImageForm.this.zoomMode, PiviImageForm.this.zoomPercent);
+						finishLoad(_ii, _i, _isAnimatedImage);
+
+						shouldScanQR = PiviImageForm.this.status == EnumLoadingStatus.Finished &&
+								!PiviImageForm.this.isAnimatedImage &&
+								PiviImageForm.this.imageWidth > 0 &&
+								PiviImageForm.this.imageHeight > 0;
 					}
 
 					PiviImageForm.this.pViewport.repaint();
@@ -559,10 +692,32 @@ public class PiviImageForm
 			{
 				synchronized (LOCK)
 				{
-					PiviImageForm.this.status = EnumLoadingStatus.Error;
-					PiviImageForm.this.exception = e;
+					errorReadImage(e);
 				}
 			}
+
+			// 开始识别二维码
+			if(shouldScanQR)
+			{
+				scanQRCodes(_i);
+			}
+		}
+	}
+	protected class ThreadLoadImage extends ThreadLoader
+	{
+		Image image;
+		ThreadLoadImage(Image image)
+		{
+			super();
+			setDaemon(true);
+			this.image = image;
+		}
+
+		@Override
+		public void run()
+		{
+			PiviImageForm.this.status = EnumLoadingStatus.NotStarted;
+
 		}
 	}
 }

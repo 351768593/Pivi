@@ -1,5 +1,11 @@
 # Pivi (Picture Viewer)
 
+![logo](doc/icon.png)
+
+[changelog](doc/changelog.md)
+
+[roadmap](doc/roadmap.md)
+
 ## 此为何轮
 
 这是一个简简单单图片查看器的轮子.
@@ -19,7 +25,6 @@ Windows 自带的 Photos 和 Telegram 自带的图片查看器在查看大尺寸
 .jar 版本使用 GraalVM 编译打包; .exe 版本使用对应的 jpackage 打包.
 
 ~~本来想用 GraalVM 的 native-image 打包, 但是那玩意只能用 fallback 模式打包基于 Swing 的程序, 没法做到完全脱离 JDK, 哭哩哭哩~~
-
 
 ## 使辙何往
 
