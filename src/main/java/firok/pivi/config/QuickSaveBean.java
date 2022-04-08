@@ -38,9 +38,8 @@ public class QuickSaveBean
 				final String value = raw.startsWith("\"") && raw.endsWith("\"") ? raw.substring(1, raw.length() - 1) : raw;
 
 				var folder = new File(value);
-				if(folder.exists() && folder.isDirectory())
 
-				ret.listMapping.add(new Mapping(name, folder));
+				ret.listMapping.add(new Mapping(name, folder.getAbsoluteFile()));
 			}
 		}
 		catch (Exception ignored) { }

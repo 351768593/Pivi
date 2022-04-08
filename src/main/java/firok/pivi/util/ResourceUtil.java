@@ -118,7 +118,14 @@ public class ResourceUtil
 	 */
 	public static boolean isAnimatedImage(byte[] bytes)
 	{
-		if(bytes == null || bytes.length < 4) return false;
+		var header = getDataHeader(bytes);
+		var fileType = getFileTypeFromDataHeader(header);
+		return fileType == FileType.GIF;
+	}
+
+	public static String getDataHeader(byte[] bytes)
+	{
+		if(bytes == null || bytes.length < 4) return null;
 
 		byte[] bytesHeaderRaw = new byte[] {
 				bytes[0],
@@ -146,8 +153,73 @@ public class ResourceUtil
 				charsNumber[bytesHeaderHex[6]],
 				charsNumber[bytesHeaderHex[7]],
 		};
-		String str = new String(charsHex);
+		return new String(charsHex);
+	}
+	public static FileType getFileTypeFromDataHeader(String header)
+	{
+		if(header == null) return FileType.Unknown;
+		for(var objType : FileType.values())
+		{
+			if(objType.equalHeader(header))
+			{
+				return objType;
+			}
+		}
+		return FileType.Unknown;
+	}
 
-		return "47494638".equals(str);
+	public enum FileType
+	{
+		JPEG("FFD8FF"),
+		PNG("89504E47"),
+		GIF("47494638", true),
+		TIFF("49492A00"),
+		BMP("424D"),
+		CAD("41433130"),
+		PSD("38425053"),
+		RTF("7B5C727466"),
+		XML("3C3F786D6C"),
+		HTML("68746D6C3E"),
+		EML("44656C69766572792D646174653A"),
+		DBX("CFAD12FEC5FD746F"),
+		PST("2142444E"),
+		XLS_DOC("D0CF11E0"),
+		MDB("5374616E64617264204A"),
+		WPD("FF575043"),
+		EPS_PS("252150532D41646F6265"),
+		PDF("255044462D312E"),
+		QDF("AC9EBD8F"),
+		PWL("E3828596"),
+		ZIP("504B0304"),
+		RAR("52617221"),
+		WAVE("57415645"),
+		AVI("41564920"),
+		RAM("2E7261FD"),
+		RM("2E524D46"),
+		MPEG("000001BA"),
+		MPEG2("000001B3"),
+		MOV("6D6F6F76"),
+		ASF("3026B2758E66CF11"),
+		MIDI("4D546864"),
+
+		Unknown("        "),
+		;
+		public final String header;
+		public final boolean isAnimatedImage;
+		FileType(String header)
+		{
+			this(header, false);
+		}
+		FileType(String header, boolean isAnimatedImage)
+		{
+			this.header = header;
+			this.isAnimatedImage = isAnimatedImage;
+		}
+
+		public boolean equalHeader(String header)
+		{
+			if(header == null) return false;
+			return this.header.startsWith(header);
+		}
 	}
 }

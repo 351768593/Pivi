@@ -1,14 +1,25 @@
 # Pivi (Picture Viewer)
 
-![logo](doc/icon.png)
-
-[changelog](doc/changelog.md)
-
-[roadmap](doc/roadmap.md)
-
 ## 此为何轮
 
 这是一个简简单单图片查看器的轮子.
+
+<table>
+<tr>
+    <td rowspan="4"><img src="doc/icon_pivi.png" alt="icon"/></td>
+    <td><a href="doc/manual.md">manual</a></td>
+</tr>
+<tr>
+    <td><a href="doc/changelog.md">changelog</a></td>
+</tr>
+<tr>
+    <td><a href="doc/roadmap.md">roadmap</a></td>
+</tr>
+<tr>
+    <td><sub>&lt;&ensp;&ensp;<i>你看这算不算个logo?</i></sub></td>
+</tr>
+</table>
+
 
 ## 何出此轮
 

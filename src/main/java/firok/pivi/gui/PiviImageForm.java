@@ -17,7 +17,11 @@ import java.math.RoundingMode;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.Objects;
+import java.util.UUID;
 
 public class PiviImageForm
 {
@@ -34,7 +38,8 @@ public class PiviImageForm
 	public URL url;
 	public String urlString;
 	public String urlShort;
-//	public String imageType;
+	public ResourceUtil.FileType fileType;
+	public byte[] fileData;
 	public EnumLoadingStatus status;
 	public Exception exception;
 	public Image image;
@@ -62,10 +67,6 @@ public class PiviImageForm
 	 */
 	public BigDecimal viewportPercent;
 	/**
-	 * 当前图片是否为动图
-	 */
-	public boolean isAnimatedImage;
-	/**
 	 * 是否处于Shift模式
 	 */
 	public boolean isShiftMode;
@@ -80,7 +81,8 @@ public class PiviImageForm
 	public boolean needRepaint()
 	{
 		return ( // 判断动画属性和图片属性
-			this.isAnimatedImage ||
+			(this.fileType != null &&
+			this.fileType.isAnimatedImage) ||
 			this.needRepainting
 		) && ( // 判断窗体状态
 			isFrameReady()
@@ -291,10 +293,10 @@ public class PiviImageForm
 
 		final JLabel labelReading;
 		final JLabel labelNoResult;
-		final JPanel panelListQRCodes;
+//		final JPanel panelListQRCodes;
 
 		java.util.List<com.google.zxing.Result> listResult;
-		java.util.List<JMenuItem> listItemResult;
+		java.util.List<JComponent> listItemResult;
 		FramePopupMenu()
 		{
 			super();
@@ -338,8 +340,8 @@ public class PiviImageForm
 			labelNoResult.setVisible(false);
 			add(labelNoResult);
 
-			panelListQRCodes = new JPanel();
-			add(panelListQRCodes);
+//			panelListQRCodes = new JPanel();
+//			add(panelListQRCodes);
 
 			add(new JSeparator());
 
@@ -353,14 +355,26 @@ public class PiviImageForm
 					{
 						if(PiviImageForm.this.status == EnumLoadingStatus.Finished)
 						{
-							// todo high 实现qsave功能
-//							var file = new File(value, PiviImageForm.this.);
-//							var bytes = new byte[0];
-//							try
-//							{
-//								ResourceUtil.writeBytes(value, bytes);
-//							}
-//							catch (Exception ignored) { }
+							// 决定文件名
+							var fm = Pivi.config.getFilenameMethod();
+
+							var filename = switch (fm)
+							{
+								case UseTimestamp -> genTimestampFilename();
+								case UseCustom -> genCustomFilename();
+							};
+							if(filename == null) return; // 出现这种情况是因为用户取消快速保存
+
+							if(!value.exists()) value.mkdirs();
+							var file = new File(value, filename);
+							System.out.println(file.getAbsoluteFile());
+							try
+							{
+								ResourceUtil.writeBytes(file, fileData);
+							}
+							catch (Exception ignored) {
+								System.out.println(ignored);
+							}
 						}
 					}
 				});
@@ -370,13 +384,32 @@ public class PiviImageForm
 			pack();
 		}
 
+		private String genTimestampFilename()
+		{
+			return getCurrentTimestamp() + "." + PiviImageForm.this.fileType.toString().toLowerCase();
+		}
+		private String genCustomFilename()
+		{
+			return JOptionPane.showInputDialog(PiviImageForm.this.frame, "快速保存文件名", genTimestampFilename());
+		}
+
+		private static final SimpleDateFormat formatter = new SimpleDateFormat("yyMMdd hhmm24ss");
+		public static String getCurrentTimestamp()
+		{
+			synchronized (formatter)
+			{
+				return formatter.format(new java.util.Date());
+			}
+		}
+
 		public void setListResult(java.util.List<com.google.zxing.Result> listResult)
 		{
-			this.panelListQRCodes.removeAll();
+//			this.panelListQRCodes.removeAll();
+			this.listItemResult.forEach(FramePopupMenu.this::remove);
 			this.listResult.clear();
 			this.listItemResult.clear();
 
-			if(listResult != null)
+			if(listResult != null && !listResult.isEmpty())
 			{
 				this.listResult.addAll(listResult);
 				EventQueue.invokeLater(()-> listResult.forEach(result -> {
@@ -387,7 +420,7 @@ public class PiviImageForm
 							content;
 					var miClipboard = new JMenuItem("📋 | " + contentCut);
 					miClipboard.addActionListener(e -> ClipboardUtil.putTextIntoClipboard(content));
-					FramePopupMenu.this.panelListQRCodes.add(miClipboard);
+					FramePopupMenu.this.add(miClipboard, 8);
 					FramePopupMenu.this.listItemResult.add(miClipboard);
 
 					// 尝试识别是否为uri
@@ -397,7 +430,7 @@ public class PiviImageForm
 						var uri = url.toURI();
 						var miUri = new JMenuItem("🌏 | "+contentCut);
 						miUri.addActionListener(e -> BrowserUtil.accessURI(uri));
-						FramePopupMenu.this.panelListQRCodes.add(miUri);
+						FramePopupMenu.this.add(miUri, 8);
 						FramePopupMenu.this.listItemResult.add(miUri);
 					}
 					catch (MalformedURLException | URISyntaxException ignored) { }
@@ -597,11 +630,12 @@ public class PiviImageForm
 			PiviImageForm.this.urlShort = _ius > 0 ? _us.substring(_ius + 1) : _us;
 			PiviImageForm.this.status = EnumLoadingStatus.Started;
 		}
-		protected void finishLoad(ImageIcon _ii, Image _i, boolean _isAnimatedImage)
+		protected void finishLoad(ImageIcon _ii, Image _i, ResourceUtil.FileType fileType, byte[] fileData)
 		{
 			PiviImageForm.this.status = EnumLoadingStatus.Finished;
 			PiviImageForm.this.image = _i;
-			PiviImageForm.this.isAnimatedImage = _isAnimatedImage;
+			PiviImageForm.this.fileType = fileType;
+			PiviImageForm.this.fileData = fileData;
 			PiviImageForm.this.iob = _ii.getImageObserver();
 			PiviImageForm.this.imageWidth = _i.getWidth(PiviImageForm.this.iob);
 			PiviImageForm.this.imageHeight = _i.getHeight(PiviImageForm.this.iob);
@@ -665,7 +699,8 @@ public class PiviImageForm
 					}
 
 					var bytes = ResourceUtil.readBytes(_u);
-					var _isAnimatedImage = ResourceUtil.isAnimatedImage(bytes);
+					var fileHeader = ResourceUtil.getDataHeader(bytes);
+					var fileType = ResourceUtil.getFileTypeFromDataHeader(fileHeader);
 					_ii = new ImageIcon(bytes);
 					_i = _ii.getImage();
 					if(_i == null)
@@ -677,10 +712,10 @@ public class PiviImageForm
 
 					synchronized (LOCK)
 					{
-						finishLoad(_ii, _i, _isAnimatedImage);
+						finishLoad(_ii, _i, fileType, bytes);
 
 						shouldScanQR = PiviImageForm.this.status == EnumLoadingStatus.Finished &&
-								!PiviImageForm.this.isAnimatedImage &&
+								!PiviImageForm.this.fileType.isAnimatedImage &&
 								PiviImageForm.this.imageWidth > 0 &&
 								PiviImageForm.this.imageHeight > 0;
 					}

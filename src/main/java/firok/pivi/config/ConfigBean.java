@@ -13,6 +13,7 @@ public class ConfigBean
 {
 	ConfigZoomMode initZoomMode = ConfigZoomMode.OriginSize;
 	Integer initZoomPercent = 100;
+	ConfigFilenameMethod filenameMethod = ConfigFilenameMethod.UseTimestamp;
 
 	String lafClassName = com.formdev.flatlaf.FlatDarkLaf.class.getName();
 
@@ -30,6 +31,7 @@ public class ConfigBean
 	{
 		if(bean.initZoomMode != null) this.initZoomMode = bean.initZoomMode;
 		if(bean.initZoomPercent != null) this.initZoomPercent = bean.initZoomPercent;
+		if(bean.filenameMethod != null) this.filenameMethod = bean.filenameMethod;
 		if(bean.lafClassName != null) this.lafClassName = bean.lafClassName;
 
 		if(bean.initLocX != null) this.initLocX = bean.initLocX;
@@ -66,6 +68,7 @@ public class ConfigBean
 				{
 					case "initZoomMode" -> ret.initZoomMode = ConfigZoomMode.valueOf(value);
 					case "initZoomPercent" -> ret.initZoomPercent = Integer.valueOf(value);
+					case "filenameMethod" -> ret.filenameMethod = ConfigFilenameMethod.valueOf(value);
 					case "lafClassName" -> ret.lafClassName = value;
 
 					case "initLocX" -> ret.initLocX = Integer.valueOf(value);
@@ -95,6 +98,7 @@ public class ConfigBean
 		{
 			out.println("initZoomMode="+initZoomMode);
 			out.println("initZoomPercent="+initZoomPercent);
+			out.println("filenameMethod="+filenameMethod);
 			out.println("lafClassName="+lafClassName);
 			out.println("initLocX="+initLocX);
 			out.println("initLocY="+initLocY);

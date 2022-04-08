@@ -2,6 +2,7 @@ package firok.pivi.gui;
 
 import firok.pivi.Pivi;
 import firok.pivi.config.ConfigBean;
+import firok.pivi.config.ConfigFilenameMethod;
 import firok.pivi.config.ConfigZoomMode;
 import firok.pivi.util.BrowserUtil;
 import lombok.SneakyThrows;
@@ -34,6 +35,8 @@ public class PiviBeaconForm
 	private JLabel labelPivi;
 	private JLabel labelVersion;
 	private JLabel labelDescription;
+	private JRadioButton rbQSaveUseTimestampFilename;
+	private JRadioButton rbQSaveUseCustomFilename;
 
 	private void createUIComponents()
 	{
@@ -179,6 +182,8 @@ public class PiviBeaconForm
 		inZoomSpped.addChangeListener(e -> Pivi.config.setZoomSpeed((Integer) inZoomSpped.getValue()));
 		inBeaconPort.setModel(new SpinnerNumberModel((int) Pivi.config.getBeaconPort(), 1, 65535, 1));
 		inBeaconPort.addChangeListener(e -> Pivi.config.setBeaconPort((Integer) inBeaconPort.getValue()));
+		rbQSaveUseCustomFilename.addActionListener(e -> Pivi.config.setFilenameMethod(ConfigFilenameMethod.UseCustom));
+		rbQSaveUseTimestampFilename.addActionListener(e -> Pivi.config.setFilenameMethod(ConfigFilenameMethod.UseTimestamp));
 		var model = new DefaultComboBoxModel<EnumComboLAF>();
 		model.addAll(Arrays.asList(EnumComboLAF.values()));
 		cbxLAF.setModel(model);
@@ -236,5 +241,8 @@ public class PiviBeaconForm
 		inZoomSpped.setValue(config.getZoomSpeed());
 		inBeaconPort.setValue(config.getBeaconPort());
 		inCustomPercent.setValue(config.getInitZoomPercent());
+		final var fm = config.getFilenameMethod();
+		rbQSaveUseTimestampFilename.setSelected(fm == ConfigFilenameMethod.UseTimestamp);
+		rbQSaveUseCustomFilename.setSelected(fm == ConfigFilenameMethod.UseCustom);
 	}
 }
